@@ -1,0 +1,12 @@
+# ninja log v5
+1	34	0	C:/Coding/mumuso/android/app/.cxx/Debug/1f634311/arm64-v8a/CMakeFiles/cmake.verify_globs	e2ec6864b945d744
+6228	6357	7924556028663613	C:/Coding/mumuso/android/app/build/intermediates/cxx/Debug/1f634311/obj/arm64-v8a/libappmodules.so	53bf3a3a6a94348
+21	5912	7924556024057047	CMakeFiles/appmodules.dir/C_/Coding/mumuso/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	ca094397e178fff0
+28	319	7924557561180143	build.ninja	c4c269af2bf5f3c5
+14	6227	7924556027125561	CMakeFiles/appmodules.dir/OnLoad.cpp.o	289f3b72e8545ba
+0	9	0	clean	4ddeec2508fd2ead
+2	32	0	C:/Coding/mumuso/android/app/.cxx/Debug/1f634311/arm64-v8a/CMakeFiles/cmake.verify_globs	e2ec6864b945d744
+11	5171	7924557616738773	CMakeFiles/appmodules.dir/C_/Coding/mumuso/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	ca094397e178fff0
+16	5657	7924557621710061	CMakeFiles/appmodules.dir/OnLoad.cpp.o	289f3b72e8545ba
+5658	5788	7924557623099125	C:/Coding/mumuso/android/app/build/intermediates/cxx/Debug/1f634311/obj/arm64-v8a/libappmodules.so	53bf3a3a6a94348
+2	27	0	C:/Coding/mumuso/android/app/.cxx/Debug/1f634311/arm64-v8a/CMakeFiles/cmake.verify_globs	e2ec6864b945d744

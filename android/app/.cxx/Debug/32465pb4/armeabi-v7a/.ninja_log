@@ -1,0 +1,6 @@
+# ninja log v5
+10	86	0	C:/Professional/mumuso/android/app/.cxx/Debug/32465pb4/armeabi-v7a/CMakeFiles/cmake.verify_globs	65652bf451b76bdb
+14	6764	7924360050556459	CMakeFiles/appmodules.dir/C_/Professional/mumuso/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	3b0ddd5f67a9de9f
+2	7342	7924360056455592	CMakeFiles/appmodules.dir/OnLoad.cpp.o	33c8136efa1668f0
+7343	7591	7924360061390510	C:/Professional/mumuso/android/app/build/intermediates/cxx/Debug/32465pb4/obj/armeabi-v7a/libappmodules.so	a310d4e35392bbc4
+10	51	0	C:/Professional/mumuso/android/app/.cxx/Debug/32465pb4/armeabi-v7a/CMakeFiles/cmake.verify_globs	65652bf451b76bdb

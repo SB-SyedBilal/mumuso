@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "target": "esnext",
+        "module": "commonjs",
+        "lib": [
+            "es2019",
+            "es2020.promise",
+            "es2020.bigint",
+            "es2020.string"
+        ],
+        "jsx": "react-native",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true
+    },
+    "exclude": [
+        "node_modules"
+    ]
+}
