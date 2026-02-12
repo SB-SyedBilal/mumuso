@@ -22,7 +22,6 @@ react {
     //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
     // debuggableVariants = ["liteDebug", "prodDebug"]
-
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
     // nodeExecutableAndArgs = ["node"]
@@ -85,6 +84,8 @@ android {
         versionCode 1
         versionName "1.0"
     }
+    // REMOVED: abiFilters that were preventing native lib bundling
+    // REMOVED: packagingOptions that were incorrectly configured
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -116,4 +117,5 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
 }

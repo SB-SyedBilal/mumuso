@@ -1,0 +1,13 @@
+# ninja log v5
+8219	8580	7925850158931798	C:/Professional/mumuso/android/app/build/intermediates/cxx/RelWithDebInfo/3obna342/obj/armeabi-v7a/libappmodules.so	9eecc62774450169
+5	339	0	C:/Professional/mumuso/android/app/.cxx/RelWithDebInfo/3obna342/armeabi-v7a/CMakeFiles/cmake.verify_globs	a77bb75d77b4c2f4
+22	8218	7925850152984338	CMakeFiles/appmodules.dir/OnLoad.cpp.o	f7add6197fe019f6
+861	2212	7925868134716750	build.ninja	c4eddbb900813873
+30	7693	7925850146917852	CMakeFiles/appmodules.dir/C_/Professional/mumuso/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	29d9cad131482cea
+0	103	0	clean	cdb42ce0ef98be5e
+5	676	0	C:/Professional/mumuso/android/app/.cxx/RelWithDebInfo/3obna342/armeabi-v7a/CMakeFiles/cmake.verify_globs	a77bb75d77b4c2f4
+41	1123	7925868167133843	CMakeFiles/appmodules.dir/OnLoad.cpp.o	f7add6197fe019f6
+30	1157	7925868166446350	CMakeFiles/appmodules.dir/C_/Professional/mumuso/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	29d9cad131482cea
+1158	3097	7925868183606162	C:/Professional/mumuso/android/app/build/intermediates/cxx/RelWithDebInfo/3obna342/obj/armeabi-v7a/libappmodules.so	9eecc62774450169
+5	78	0	C:/Professional/mumuso/android/app/.cxx/RelWithDebInfo/3obna342/armeabi-v7a/CMakeFiles/cmake.verify_globs	a77bb75d77b4c2f4
+1	15	0	clean	cdb42ce0ef98be5e

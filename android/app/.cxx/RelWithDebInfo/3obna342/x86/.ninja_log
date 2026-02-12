@@ -1,0 +1,13 @@
+# ninja log v5
+4	320	0	C:/Professional/mumuso/android/app/.cxx/RelWithDebInfo/3obna342/x86/CMakeFiles/cmake.verify_globs	8ff8bc161b94ba06
+18	10323	7925850269030348	CMakeFiles/appmodules.dir/C_/Professional/mumuso/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	8ce2f8dad4086a09
+10979	11361	7925850282052627	C:/Professional/mumuso/android/app/build/intermediates/cxx/RelWithDebInfo/3obna342/obj/x86/libappmodules.so	bf3eddb014f84352
+25	10978	7925850274905087	CMakeFiles/appmodules.dir/OnLoad.cpp.o	cd127bce7bfe2896
+733	2264	7925868241284145	build.ninja	950bfe8a0545120c
+1	117	0	clean	cdb42ce0ef98be5e
+4	287	0	C:/Professional/mumuso/android/app/.cxx/RelWithDebInfo/3obna342/x86/CMakeFiles/cmake.verify_globs	8ff8bc161b94ba06
+38	639	7925868259843630	CMakeFiles/appmodules.dir/OnLoad.cpp.o	cd127bce7bfe2896
+27	644	7925868259795094	CMakeFiles/appmodules.dir/C_/Professional/mumuso/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	8ce2f8dad4086a09
+645	1027	7925868263938140	C:/Professional/mumuso/android/app/build/intermediates/cxx/RelWithDebInfo/3obna342/obj/x86/libappmodules.so	bf3eddb014f84352
+3	45	0	C:/Professional/mumuso/android/app/.cxx/RelWithDebInfo/3obna342/x86/CMakeFiles/cmake.verify_globs	8ff8bc161b94ba06
+0	12	0	clean	cdb42ce0ef98be5e
