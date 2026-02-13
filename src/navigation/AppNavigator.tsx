@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { Text } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
+import 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors } from '../constants/colors';
-import { fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, fontWeight } from '../constants/dimensions';
 import { RootStackParamList, BottomTabParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 
@@ -35,12 +36,24 @@ import QRHelpScreen from '../screens/QRHelpScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
-const TAB_ICONS: Record<string, string> = {
-  Home: '\u{1F3E0}',
-  MyCard: '\u{1F4B3}',
-  History: '\u{1F4CB}',
-  Profile: '\u{1F464}',
+const TAB_CONFIG: Record<string, { label: string; icon: string; activeIcon: string }> = {
+  Home:    { label: 'HOME',    icon: '\u25CB', activeIcon: '\u25CF' },
+  MyCard:  { label: 'CARD',    icon: '\u25A1', activeIcon: '\u25A0' },
+  History: { label: 'HISTORY', icon: '\u25B3', activeIcon: '\u25B2' },
+  Profile: { label: 'PROFILE', icon: '\u25C7', activeIcon: '\u25C6' },
 };
+
+function TabIcon({ focused, routeName }: { focused: boolean; routeName: string }) {
+  const config = TAB_CONFIG[routeName];
+  return (
+    <View style={tabStyles.iconContainer}>
+      {focused && <View style={tabStyles.activeIndicator} />}
+      <Text style={[tabStyles.icon, focused && tabStyles.iconActive]}>
+        {focused ? config.activeIcon : config.icon}
+      </Text>
+    </View>
+  );
+}
 
 function MainTabs() {
   return (
@@ -48,23 +61,56 @@ function MainTabs() {
       screenOptions={({ route }: { route: { name: string } }) => ({
         headerShown: false,
         tabBarStyle: {
-          height: 65, paddingBottom: 8, paddingTop: 8, backgroundColor: '#ffffff',
-          borderTopWidth: 1, borderTopColor: colors.neutral[100], elevation: 8,
+          height: 56 + (Platform.OS === 'ios' ? 34 : 0),
+          paddingBottom: Platform.OS === 'ios' ? 34 : 8,
+          paddingTop: 8,
+          backgroundColor: 'rgba(245,243,240,0.88)',
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(0,0,0,0.06)',
+          elevation: 0,
         },
-        tabBarActiveTintColor: colors.primary[600],
-        tabBarInactiveTintColor: colors.neutral[400],
-        tabBarLabelStyle: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
+        tabBarActiveTintColor: colors.tabActiveLabel,
+        tabBarInactiveTintColor: colors.tabInactive,
+        tabBarLabelStyle: {
+          fontSize: 10,
+          fontWeight: fontWeight.medium,
+          letterSpacing: 10 * 0.06,
+        },
         tabBarIcon: ({ focused }: { focused: boolean }) => (
-          <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>{TAB_ICONS[route.name]}</Text>
+          <TabIcon focused={focused} routeName={route.name} />
         ),
       })}>
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Home' }} />
-      <Tab.Screen name="MyCard" component={MyCardScreen} options={{ tabBarLabel: 'My Card' }} />
-      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: 'History' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Profile' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: TAB_CONFIG.Home.label }} />
+      <Tab.Screen name="MyCard" component={MyCardScreen} options={{ tabBarLabel: TAB_CONFIG.MyCard.label }} />
+      <Tab.Screen name="History" component={HistoryScreen} options={{ tabBarLabel: TAB_CONFIG.History.label }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: TAB_CONFIG.Profile.label }} />
     </Tab.Navigator>
   );
 }
+
+const tabStyles = StyleSheet.create({
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 44,
+    height: 28,
+  },
+  activeIndicator: {
+    position: 'absolute',
+    top: -2,
+    width: 24,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.accent.default,
+  },
+  icon: {
+    fontSize: 20,
+    color: colors.tabInactive,
+  },
+  iconActive: {
+    color: colors.tabActive,
+  },
+});
 
 export default function AppNavigator() {
   const { isLoading, isLoggedIn, hasSeenOnboarding, completeOnboarding } = useAuth();

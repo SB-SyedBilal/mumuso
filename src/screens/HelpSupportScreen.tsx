@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, TextInput } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
-import Card from '../components/Card';
 import Button from '../components/Button';
+
+const H = 24;
 
 interface Props { navigation: NativeStackNavigationProp<RootStackParamList, 'HelpSupport'>; }
 
@@ -23,47 +24,70 @@ export default function HelpSupportScreen({ navigation }: Props) {
   const [issueDesc, setIssueDesc] = useState('');
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Text style={styles.backText}>{'\u2190'} Back</Text></TouchableOpacity>
-        <Text style={styles.headerTitle}>Help & Support</Text>
-        <View style={{ width: 60 }} />
+    <View style={styles.screen}>
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Text style={styles.backIcon}>{'\u2039'}</Text></TouchableOpacity>
+        <Text style={styles.navTitle}>Help & Support</Text>
+        <View style={{ width: 44 }} />
       </View>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.section}><Text style={styles.sectionTitle}>Contact Us</Text>
-          <View style={styles.contactGrid}>
-            <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('tel:111-686876').catch(() => {})}><Text style={{ fontSize: 28 }}>{'\u{1F4DE}'}</Text><Text style={styles.contactLabel}>Phone</Text><Text style={styles.contactSub}>111-MUMUSO</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('mailto:support@mumuso.com.pk').catch(() => {})}><Text style={{ fontSize: 28 }}>{'\u{2709}'}</Text><Text style={styles.contactLabel}>Email</Text><Text style={styles.contactSub}>support@mumuso.com.pk</Text></TouchableOpacity>
-          </View>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        {/* Contact */}
+        <Text style={styles.sectionLabel}>CONTACT US</Text>
+        <View style={styles.contactRow}>
+          <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('tel:111-686876').catch(() => {})}>
+            <Text style={styles.contactTitle}>Phone</Text>
+            <Text style={styles.contactSub}>111-MUMUSO</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('mailto:support@mumuso.com.pk').catch(() => {})}>
+            <Text style={styles.contactTitle}>Email</Text>
+            <Text style={styles.contactSub}>support@mumuso.com.pk</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.section}><Text style={styles.sectionTitle}>FAQ</Text>
+
+        {/* FAQ */}
+        <Text style={styles.sectionLabel}>FREQUENTLY ASKED</Text>
+        <View style={styles.faqCard}>
           {FAQ.map((item, i) => (
-            <TouchableOpacity key={i} style={styles.faqItem} onPress={() => setExpandedFaq(expandedFaq === i ? null : i)}>
-              <View style={styles.faqHeader}><Text style={styles.faqQ}>{item.q}</Text><Text style={{ fontSize: 10, color: colors.neutral[400] }}>{expandedFaq === i ? '\u25B2' : '\u25BC'}</Text></View>
+            <View key={i}>
+              <TouchableOpacity style={styles.faqRow} onPress={() => setExpandedFaq(expandedFaq === i ? null : i)}>
+                <Text style={styles.faqQ}>{item.q}</Text>
+                <Text style={styles.faqChevron}>{expandedFaq === i ? '\u2303' : '\u2304'}</Text>
+              </TouchableOpacity>
               {expandedFaq === i && <Text style={styles.faqA}>{item.a}</Text>}
-            </TouchableOpacity>
+              {i < FAQ.length - 1 && <View style={styles.divider} />}
+            </View>
           ))}
         </View>
-        <View style={styles.section}><Text style={styles.sectionTitle}>Report a Problem</Text>
-          {!showReport ? <Button title="Report a Problem" onPress={() => setShowReport(true)} variant="secondary" size="medium" /> : (
-            <Card variant="outlined">
-              <Text style={styles.formLabel}>Issue Type</Text>
-              <View style={styles.chipRow}>
-                {['Discount not applied', 'QR code issue', 'Payment problem', 'App bug', 'Other'].map(t => (
-                  <TouchableOpacity key={t} style={[styles.chip, issueType === t && styles.chipActive]} onPress={() => setIssueType(t)}>
-                    <Text style={[styles.chipText, issueType === t && { color: '#ffffff' }]}>{t}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <Text style={styles.formLabel}>Description</Text>
-              <TextInput style={styles.textArea} placeholder="Describe your issue..." placeholderTextColor={colors.neutral[400]} value={issueDesc} onChangeText={setIssueDesc} multiline numberOfLines={4} textAlignVertical="top" />
-              <View style={styles.formActions}>
-                <Button title="Cancel" onPress={() => setShowReport(false)} variant="text" size="small" />
-                <Button title="Submit" onPress={() => { if (!issueType || !issueDesc) { Alert.alert('Error', 'Please fill in all fields.'); return; } Alert.alert('Submitted', 'Our team will get back to you within 24 hours.'); setShowReport(false); setIssueType(''); setIssueDesc(''); }} variant="primary" size="small" />
-              </View>
-            </Card>
-          )}
-        </View>
+
+        {/* Report */}
+        <Text style={styles.sectionLabel}>REPORT A PROBLEM</Text>
+        {!showReport ? (
+          <Button title="Report a Problem" onPress={() => setShowReport(true)} variant="secondary" />
+        ) : (
+          <View style={styles.reportCard}>
+            <Text style={styles.fieldLabel}>Issue type</Text>
+            <View style={styles.chipRow}>
+              {['Discount not applied', 'QR code issue', 'Payment problem', 'App bug', 'Other'].map(t => (
+                <TouchableOpacity key={t} style={[styles.chip, issueType === t && styles.chipActive]} onPress={() => setIssueType(t)}>
+                  <Text style={[styles.chipText, issueType === t && styles.chipTextActive]}>{t}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={[styles.fieldLabel, { marginTop: spacing['4'] }]}>Description</Text>
+            <TextInput style={styles.textArea} placeholder="Describe your issue..." placeholderTextColor={colors.text.tertiary} value={issueDesc} onChangeText={setIssueDesc} multiline numberOfLines={4} textAlignVertical="top" />
+            <View style={styles.formActions}>
+              <Button title="Cancel" onPress={() => setShowReport(false)} variant="text" />
+              <Button title="Submit" onPress={() => {
+                if (!issueType || !issueDesc) { Alert.alert('Required', 'Please fill in all fields.'); return; }
+                // NOT SUPPORTED YET: Real issue reporting requires backend API.
+                Alert.alert('Submitted', 'Our team will get back to you within 24 hours.');
+                setShowReport(false); setIssueType(''); setIssueDesc('');
+              }} variant="primary" />
+            </View>
+          </View>
+        )}
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>
@@ -71,25 +95,34 @@ export default function HelpSupportScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.neutral[50] },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 50, paddingBottom: spacing.md, backgroundColor: '#ffffff' },
-  backText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary },
-  section: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md },
-  contactGrid: { flexDirection: 'row', gap: spacing.sm + 2 },
-  contactCard: { flex: 1, backgroundColor: '#ffffff', borderRadius: borderRadius.lg, padding: spacing.md, alignItems: 'center', elevation: 2 },
-  contactLabel: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary, marginTop: spacing.sm },
-  contactSub: { fontSize: fontSize.xs, color: colors.text.secondary, marginTop: 2, textAlign: 'center' },
-  faqItem: { backgroundColor: '#ffffff', borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.neutral[100] },
-  faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  faqQ: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary, flex: 1, marginRight: spacing.sm },
-  faqA: { fontSize: fontSize.sm, color: colors.text.secondary, lineHeight: 22, marginTop: spacing.sm },
-  formLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: spacing.sm, marginTop: spacing.md },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { paddingVertical: spacing.xs + 2, paddingHorizontal: spacing.md, borderRadius: borderRadius.full, backgroundColor: colors.neutral[100] },
-  chipActive: { backgroundColor: colors.primary[600] },
-  chipText: { fontSize: fontSize.sm, color: colors.text.secondary },
-  textArea: { borderWidth: 1, borderColor: colors.neutral[200], borderRadius: borderRadius.md, padding: spacing.md, fontSize: fontSize.md, color: colors.text.primary, minHeight: 100 },
-  formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing.sm, marginTop: spacing.md },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  navBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: H, paddingTop: 56, paddingBottom: spacing['2'] },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  backIcon: { fontSize: 28, color: colors.text.primary },
+  navTitle: { fontSize: 17, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  content: { paddingHorizontal: H },
+
+  sectionLabel: { fontSize: 11, fontWeight: fontWeight.medium, color: colors.text.tertiary, letterSpacing: 11 * 0.08, marginBottom: spacing['3'], marginTop: spacing['6'] },
+
+  contactRow: { flexDirection: 'row', gap: spacing['3'] },
+  contactCard: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing['5'], alignItems: 'center', ...shadows.card },
+  contactTitle: { fontSize: 15, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: spacing['1'] },
+  contactSub: { fontSize: 12, color: colors.text.tertiary, textAlign: 'center' },
+
+  faqCard: { backgroundColor: colors.surface, borderRadius: radius.xl, paddingHorizontal: spacing['5'], ...shadows.card },
+  faqRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: spacing['4'] },
+  faqQ: { fontSize: 15, fontWeight: fontWeight.medium, color: colors.text.primary, flex: 1, marginRight: spacing['3'] },
+  faqChevron: { fontSize: 14, color: colors.text.tertiary },
+  faqA: { fontSize: 14, color: colors.text.secondary, lineHeight: 22, paddingBottom: spacing['4'] },
+  divider: { height: 1, backgroundColor: colors.border.subtle },
+
+  reportCard: { backgroundColor: colors.surface, borderRadius: radius.xl, padding: spacing['5'], ...shadows.card },
+  fieldLabel: { fontSize: 11, fontWeight: fontWeight.medium, color: colors.text.tertiary, letterSpacing: 11 * 0.08, marginBottom: spacing['2'] },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing['2'] },
+  chip: { paddingVertical: spacing['2'], paddingHorizontal: spacing['4'], borderRadius: radius.full, backgroundColor: colors.surfaceRaised, borderWidth: 1, borderColor: colors.border.subtle },
+  chipActive: { backgroundColor: colors.text.primary, borderColor: colors.text.primary },
+  chipText: { fontSize: 13, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  chipTextActive: { color: colors.text.inverted },
+  textArea: { borderWidth: 1.5, borderColor: colors.border.subtle, borderRadius: radius.md, padding: spacing['4'], fontSize: 15, color: colors.text.primary, minHeight: 100, backgroundColor: colors.canvas },
+  formActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing['2'], marginTop: spacing['4'] },
 });

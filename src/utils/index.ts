@@ -60,10 +60,10 @@ export const getPasswordStrength = (password: string): { level: string; color: s
   if (/[a-z]/.test(password)) score++;
   if (/[0-9]/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
-  if (score <= 2) return { level: 'Weak', color: '#EF4444', width: '25%' };
-  if (score <= 3) return { level: 'Fair', color: '#F59E0B', width: '50%' };
-  if (score <= 4) return { level: 'Good', color: '#3B82F6', width: '75%' };
-  return { level: 'Strong', color: '#10B981', width: '100%' };
+  if (score <= 2) return { level: 'Weak', color: '#C0544A', width: '25%' };
+  if (score <= 3) return { level: 'Fair', color: '#C08040', width: '50%' };
+  if (score <= 4) return { level: 'Good', color: '#8B6430', width: '75%' };
+  return { level: 'Strong', color: '#4A9B7F', width: '100%' };
 };
 
 export const generateMemberId = (): string => {

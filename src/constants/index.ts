@@ -1,2 +1,2 @@
-export * from './colors';
-export * from './dimensions';
+export { colors } from './colors';
+export { spacing, radius, typeScale, fontWeight, shadows, motion } from './dimensions';

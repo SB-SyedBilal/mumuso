@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Animated } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 import { maskPhoneNumber } from '../utils';
@@ -22,7 +22,9 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
   const [countdown, setCountdown] = useState(59);
   const [attempts, setAttempts] = useState(0);
   const [locked, setLocked] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (countdown > 0) {
@@ -31,10 +33,24 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
     }
   }, [countdown]);
 
+  const triggerShake = () => {
+    setHasError(true);
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start(() => {
+      setTimeout(() => setHasError(false), 1500);
+    });
+  };
+
   const handleOtpChange = (value: string, index: number) => {
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
+    setHasError(false);
     if (value && index < 5) inputRefs.current[index + 1]?.focus();
     if (newOtp.every(d => d !== '')) handleVerify(newOtp.join(''));
   };
@@ -46,15 +62,18 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
   const handleVerify = async (code?: string) => {
     if (locked) return;
     const otpCode = code || otp.join('');
-    if (otpCode.length !== 6) { Alert.alert('Error', 'Please enter all 6 digits'); return; }
+    if (otpCode.length !== 6) return;
     setLoading(true);
     const result = await verifyOTP(otpCode);
     setLoading(false);
     if (!result.success) {
       const newAttempts = attempts + 1;
       setAttempts(newAttempts);
-      if (newAttempts >= 3) { setLocked(true); Alert.alert('Locked', 'Too many failed attempts. Please try again in 5 minutes.'); }
-      else Alert.alert('Invalid OTP', result.error || 'Please try again');
+      triggerShake();
+      if (newAttempts >= 3) {
+        setLocked(true);
+        Alert.alert('Too many attempts', 'Please wait 5 minutes before trying again.');
+      }
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     }
@@ -64,25 +83,41 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
     // NOT SUPPORTED YET: Real OTP resend via SMS provider.
     setCountdown(59);
     setOtp(['', '', '', '', '', '']);
-    Alert.alert('OTP Sent', 'A new verification code has been sent to your phone.');
+    setHasError(false);
+    Alert.alert('Code sent', 'A new verification code has been sent.');
   };
 
+  const formattedCountdown = `${Math.floor(countdown / 60)}:${(countdown % 60).toString().padStart(2, '0')}`;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{'\u2190'} Back</Text>
+    <View style={styles.screen}>
+      {/* Nav */}
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backIcon}>{'\u2039'}</Text>
         </TouchableOpacity>
       </View>
+
       <View style={styles.content}>
-        <Text style={styles.title}>Verify Your Phone</Text>
-        <Text style={styles.subtitle}>Enter the 6-digit code sent to{'\n'}{maskPhoneNumber(phone_number)}</Text>
-        <View style={styles.otpRow}>
+        <Text style={styles.stepLabel}>STEP 2 OF 2</Text>
+        <Text style={styles.headline}>Enter verification code</Text>
+        <Text style={styles.subheadline}>
+          We sent a 6-digit code to{'\n'}
+          <Text style={styles.phoneHighlight}>{maskPhoneNumber(phone_number)}</Text>
+        </Text>
+
+        {/* OTP Boxes */}
+        <Animated.View style={[styles.otpRow, { transform: [{ translateX: shakeAnim }] }]}>
           {otp.map((digit, i) => (
             <TextInput
               key={i}
               ref={ref => inputRefs.current[i] = ref}
-              style={[styles.otpBox, digit ? styles.otpBoxFilled : null, locked && styles.otpBoxLocked]}
+              style={[
+                styles.otpBox,
+                digit ? styles.otpBoxFilled : null,
+                hasError && styles.otpBoxError,
+                locked && styles.otpBoxLocked,
+              ]}
               value={digit}
               onChangeText={v => handleOtpChange(v.replace(/[^0-9]/g, ''), i)}
               onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, i)}
@@ -92,14 +127,31 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
               selectTextOnFocus
             />
           ))}
-        </View>
-        {locked && <Text style={styles.lockedText}>Too many attempts. Try again in 5 minutes.</Text>}
-        <Button title="Verify" onPress={() => handleVerify()} variant="primary" size="large" loading={loading} disabled={locked || otp.some(d => !d)} style={styles.verifyButton} />
+        </Animated.View>
+
+        {hasError && !locked && (
+          <Text style={styles.errorText}>That code isn't right. Please try again.</Text>
+        )}
+        {locked && (
+          <Text style={styles.errorText}>Too many attempts. Please wait 5 minutes.</Text>
+        )}
+
+        <Button
+          title="Verify"
+          onPress={() => handleVerify()}
+          variant="primary"
+          loading={loading}
+          disabled={locked || otp.some(d => !d)}
+          style={styles.verifyButton}
+        />
+
         <View style={styles.resendRow}>
           {countdown > 0 ? (
-            <Text style={styles.countdownText}>Resend code in {countdown}s</Text>
+            <Text style={styles.countdownText}>Resend code in <Text style={styles.countdownBold}>{formattedCountdown}</Text></Text>
           ) : (
-            <TouchableOpacity onPress={handleResend}><Text style={styles.resendText}>Resend Code</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleResend}>
+              <Text style={styles.resendText}>Resend code</Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -108,19 +160,91 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  header: { paddingHorizontal: spacing.lg, paddingTop: 50 },
-  backText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  content: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.xl, alignItems: 'center' },
-  title: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.sm },
-  subtitle: { fontSize: fontSize.md, color: colors.text.secondary, textAlign: 'center', lineHeight: 24, marginBottom: spacing.xl },
-  otpRow: { flexDirection: 'row', gap: spacing.sm + 2, marginBottom: spacing.xl },
-  otpBox: { width: 48, height: 56, borderWidth: 2, borderColor: colors.neutral[200], borderRadius: borderRadius.md, textAlign: 'center', fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  otpBoxFilled: { borderColor: colors.primary[600], backgroundColor: colors.primary[50] },
-  otpBoxLocked: { borderColor: colors.neutral[200], backgroundColor: colors.neutral[100] },
-  lockedText: { fontSize: fontSize.sm, color: colors.error, marginBottom: spacing.md, textAlign: 'center' },
-  verifyButton: { width: '100%', borderRadius: borderRadius.lg },
-  resendRow: { marginTop: spacing.lg },
-  countdownText: { fontSize: fontSize.md, color: colors.text.secondary },
-  resendText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.bold },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  navBar: {
+    paddingHorizontal: spacing['6'],
+    paddingTop: 56,
+    paddingBottom: spacing['2'],
+  },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -spacing['2'] },
+  backIcon: { fontSize: 28, color: colors.text.primary },
+
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing['6'],
+    alignItems: 'center',
+  },
+  stepLabel: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.accent.text,
+    letterSpacing: 11 * 0.08,
+    marginTop: spacing['8'],
+    marginBottom: spacing['2'],
+  },
+  headline: {
+    fontSize: 30,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+    lineHeight: 38,
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    marginBottom: spacing['3'],
+  },
+  subheadline: {
+    fontSize: 15,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: spacing['10'],
+  },
+  phoneHighlight: {
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+  },
+
+  otpRow: {
+    flexDirection: 'row',
+    gap: spacing['2'],
+    marginBottom: spacing['6'],
+  },
+  otpBox: {
+    width: 48,
+    height: 56,
+    borderWidth: 1.5,
+    borderColor: colors.border.subtle,
+    borderRadius: radius.md,
+    textAlign: 'center',
+    fontSize: 22,
+    fontWeight: fontWeight.bold,
+    color: colors.text.primary,
+    backgroundColor: colors.surface,
+  },
+  otpBoxFilled: {
+    borderColor: colors.text.primary,
+    backgroundColor: colors.surfaceRaised,
+  },
+  otpBoxError: {
+    borderColor: colors.error,
+    backgroundColor: colors.errorBg,
+  },
+  otpBoxLocked: {
+    borderColor: colors.border.subtle,
+    backgroundColor: colors.surfaceRaised,
+    opacity: 0.5,
+  },
+
+  errorText: {
+    fontSize: 14,
+    color: colors.error,
+    textAlign: 'center',
+    marginBottom: spacing['4'],
+  },
+
+  verifyButton: { width: '100%' },
+
+  resendRow: { marginTop: spacing['6'] },
+  countdownText: { fontSize: 14, color: colors.text.secondary },
+  countdownBold: { fontWeight: fontWeight.semibold, color: colors.text.primary },
+  resendText: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.semibold },
 });

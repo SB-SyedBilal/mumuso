@@ -4,77 +4,121 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  View,
   ViewStyle,
   TextStyle,
 } from 'react-native';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'text' | 'danger';
-  size?: 'small' | 'medium' | 'large';
+  variant?: 'primary' | 'gold' | 'secondary' | 'text' | 'danger' | 'textGold';
   loading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  icon?: React.ReactNode;
 }
 
 export default function Button({
-  title, onPress, variant = 'primary', size = 'medium',
-  loading = false, disabled = false, style, textStyle,
+  title, onPress, variant = 'primary',
+  loading = false, disabled = false, style, textStyle, icon,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
 
-  const buttonStyles = [
-    styles.base,
-    styles[`${variant}Bg`],
-    styles[`${size}Size`],
-    isDisabled && styles.disabled,
-    style,
-  ];
+  const getBgStyle = (): ViewStyle => {
+    switch (variant) {
+      case 'primary':
+        return { backgroundColor: colors.text.primary, ...shadows.md };
+      case 'gold':
+        return { backgroundColor: colors.accent.default };
+      case 'secondary':
+        return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.border.default };
+      case 'danger':
+        return { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.error };
+      case 'text':
+      case 'textGold':
+      default:
+        return { backgroundColor: 'transparent' };
+    }
+  };
 
-  const textStyles = [
-    styles.baseText,
-    styles[`${variant}Text`],
-    styles[`${size}Text`],
-    isDisabled && styles.disabledText,
-    textStyle,
-  ];
+  const getTextStyle = (): TextStyle => {
+    switch (variant) {
+      case 'primary':
+        return { color: colors.text.inverted, fontSize: 15, fontWeight: fontWeight.semibold, letterSpacing: 0.01 };
+      case 'gold':
+        return { color: '#FFFFFF', fontSize: 15, fontWeight: fontWeight.semibold, letterSpacing: 0.02 };
+      case 'secondary':
+        return { color: colors.text.primary, fontSize: 15, fontWeight: fontWeight.medium };
+      case 'danger':
+        return { color: colors.error, fontSize: 15, fontWeight: fontWeight.medium };
+      case 'textGold':
+        return { color: colors.accent.text, fontSize: 14, fontWeight: fontWeight.medium };
+      case 'text':
+      default:
+        return { color: colors.text.secondary, fontSize: 14, fontWeight: fontWeight.medium };
+    }
+  };
+
+  const isTextVariant = variant === 'text' || variant === 'textGold';
+  const spinnerColor = variant === 'primary' ? colors.accent.default
+    : variant === 'gold' ? '#FFFFFF'
+    : colors.accent.default;
 
   return (
     <TouchableOpacity
-      style={buttonStyles}
+      style={[
+        isTextVariant ? styles.textBase : styles.base,
+        !isTextVariant && getBgStyle(),
+        isDisabled && styles.disabled,
+        style,
+      ]}
       onPress={onPress}
       disabled={isDisabled}
       activeOpacity={0.7}>
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? '#ffffff' : colors.primary[600]} size="small" />
+        <ActivityIndicator color={spinnerColor} size="small" />
       ) : (
-        <Text style={textStyles}>{title}</Text>
+        <View style={styles.content}>
+          {icon && <View style={styles.iconWrap}>{icon}</View>}
+          <Text style={[getTextStyle(), isDisabled && !isTextVariant && styles.disabledText, textStyle]}>
+            {title}
+          </Text>
+        </View>
       )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  base: { alignItems: 'center', justifyContent: 'center', borderRadius: borderRadius.md },
-  primaryBg: { backgroundColor: colors.primary[600] },
-  secondaryBg: { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary[600] },
-  textBg: { backgroundColor: 'transparent' },
-  dangerBg: { backgroundColor: colors.error },
-  smallSize: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md },
-  mediumSize: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg },
-  largeSize: { paddingVertical: spacing.md + 4, paddingHorizontal: spacing.xl },
-  disabled: { opacity: 0.5 },
-  baseText: { fontWeight: fontWeight.bold, textAlign: 'center' },
-  primaryText: { color: '#ffffff', fontSize: fontSize.md },
-  secondaryText: { color: colors.primary[600], fontSize: fontSize.md },
-  textText: { color: colors.primary[600], fontSize: fontSize.md },
-  dangerText: { color: '#ffffff', fontSize: fontSize.md },
-  smallText: { fontSize: fontSize.sm },
-  mediumText: { fontSize: fontSize.md },
-  largeText: { fontSize: fontSize.lg },
-  disabledText: { opacity: 0.7 },
-} as any);
+  base: {
+    height: 56,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing['6'],
+  },
+  textBase: {
+    paddingVertical: spacing['2'],
+    paddingHorizontal: spacing['1'],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  content: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconWrap: {
+    marginRight: spacing['2'],
+  },
+  disabled: {
+    opacity: 0.38,
+  },
+  disabledText: {
+    opacity: 0.7,
+  },
+});

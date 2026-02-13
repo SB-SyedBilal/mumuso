@@ -1,8 +1,34 @@
 # MUMUSO LOYALTY APP — FEATURE STATUS
 
 **Last Updated**: February 12, 2026
+**Design Version**: V3 — Quiet Luxury Redesign
 
 This document explicitly lists every feature's implementation status. Features marked **IMPLEMENTED** are fully built end-to-end in the frontend. Features marked **NOT SUPPORTED YET** require backend integration, third-party APIs, or native modules not yet configured.
+
+---
+
+## V3 UI REDESIGN STATUS
+
+All 23 screens and 4 core components have been rewritten to match the **Mumuso UI Design Specification V3** ("Quiet Luxury" aesthetic). Key changes:
+
+- **Design tokens**: Near-monochrome palette with warm canvas (#FAF9F7), gold accent (#C8A96E), 8pt spacing grid, updated typography weights
+- **Core components**: Button (6 variants incl. gold/ghost), Input (V3 focus/error states), Card (surface shadows), EmptyState
+- **Navigation**: Bottom tab bar with dark active state, V3 styling
+- **All screens**: Canvas backgrounds, white surface cards with subtle shadows, gold accent highlights, dark hero zones, inset dividers, V3 typography hierarchy
+- **StatusBar**: Updated to canvas background (#FAF9F7)
+
+| File | V3 Status |
+|------|-----------|
+| `src/constants/colors.ts` | REWRITTEN |
+| `src/constants/dimensions.ts` | REWRITTEN |
+| `src/styles/theme.ts` | REWRITTEN |
+| `src/components/Button.tsx` | REWRITTEN |
+| `src/components/Input.tsx` | REWRITTEN |
+| `src/components/Card.tsx` | REWRITTEN |
+| `src/components/EmptyState.tsx` | REWRITTEN |
+| `src/navigation/AppNavigator.tsx` | REWRITTEN |
+| All 23 screen files | REWRITTEN |
+| `App.tsx` (StatusBar) | UPDATED |
 
 ---
 
@@ -14,8 +40,8 @@ This document explicitly lists every feature's implementation status. Features m
 | Stack Navigator (all flows) | IMPLEMENTED | `src/navigation/AppNavigator.tsx` |
 | Bottom Tab Navigator (Home, Card, History, Profile) | IMPLEMENTED | `src/navigation/AppNavigator.tsx` |
 | Auth-based conditional navigation (logged in vs out) | IMPLEMENTED | `src/navigation/AppNavigator.tsx` |
-| Splash screen with 2.5s delay + auth check | IMPLEMENTED | `src/screens/SplashScreen.tsx` |
-| Onboarding carousel (3 slides, skip, dots) | IMPLEMENTED | `src/screens/OnboardingScreen.tsx` |
+| Splash screen with animated wordmark + gold line | IMPLEMENTED | `src/screens/SplashScreen.tsx` |
+| Onboarding carousel (3 slides, progress bar, skip/next) | IMPLEMENTED | `src/screens/OnboardingScreen.tsx` |
 | Onboarding completion persisted to AsyncStorage | IMPLEMENTED | `src/services/AuthContext.tsx` |
 
 ### Authentication Flow

@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 import { validatePhoneNumber, validateEmail, validatePassword, getPasswordStrength } from '../utils';
@@ -27,7 +27,6 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   const [city, setCity] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showCityPicker, setShowCityPicker] = useState(false);
@@ -36,15 +35,15 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!fullName || fullName.length < 2) e.fullName = 'Name must be at least 2 characters';
-    if (!validatePhoneNumber(phone)) e.phone = 'Enter a valid Pakistani phone number';
-    if (!validateEmail(email)) e.email = 'Enter a valid email address';
+    if (!fullName || fullName.length < 2) e.fullName = 'Please enter your full name (at least 2 characters)';
+    if (/\d/.test(fullName)) e.fullName = 'Names can only contain letters';
+    if (!validatePhoneNumber(phone)) e.phone = 'Enter a valid Pakistani number starting with 03';
+    if (!validateEmail(email)) e.email = "That doesn't look like a valid email address";
     if (!dob) e.dob = 'Date of birth is required';
     if (!city) e.city = 'Please select your city';
     const pwResult = validatePassword(password);
-    if (!pwResult.valid) e.password = 'Missing: ' + pwResult.errors.join(', ');
-    if (password !== confirmPassword) e.confirmPassword = 'Passwords do not match';
-    if (!agreeTerms) e.terms = 'You must agree to the terms';
+    if (!pwResult.valid) e.password = 'Password needs at least 8 characters, a number, and one uppercase letter';
+    if (password !== confirmPassword) e.confirmPassword = "Passwords don't match. Please try again.";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -63,125 +62,255 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
 
   return (
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{'\u2190'} Back</Text>
+      {/* Nav */}
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backIcon}>{'\u2039'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Create Account</Text>
-        <View style={{ width: 60 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {errors.general && <Text style={styles.generalError}>{errors.general}</Text>}
+        {/* Header */}
+        <Text style={styles.stepLabel}>STEP 1 OF 2</Text>
+        <Text style={styles.headline}>Create Your Account</Text>
+        <Text style={styles.subheadline}>Join thousands of members saving every day.</Text>
 
-        <Input label="Full Name" required value={fullName} onChangeText={setFullName} error={errors.fullName} autoCapitalize="words" placeholder="Enter your full name" />
-        <Input label="Phone Number" required value={phone} onChangeText={setPhone} error={errors.phone} keyboardType="phone-pad" placeholder="+92 3XX XXXXXXX" />
-        <Input label="Email" required value={email} onChangeText={setEmail} error={errors.email} keyboardType="email-address" autoCapitalize="none" placeholder="your@email.com" />
-        <Input label="Date of Birth" required value={dob} onChangeText={setDob} error={errors.dob} placeholder="YYYY-MM-DD" />
-
-        {/* Gender */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Gender</Text>
-          <View style={styles.chipRow}>
-            {['male', 'female', 'other', 'prefer_not_to_say'].map(g => (
-              <TouchableOpacity key={g} style={[styles.chip, gender === g && styles.chipActive]} onPress={() => setGender(g)}>
-                <Text style={[styles.chipText, gender === g && styles.chipTextActive]}>
-                  {g === 'prefer_not_to_say' ? 'N/A' : g.charAt(0).toUpperCase() + g.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* City */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>City <Text style={styles.required}>*</Text></Text>
-          <TouchableOpacity style={[styles.pickerButton, errors.city ? styles.pickerError : null]} onPress={() => setShowCityPicker(!showCityPicker)}>
-            <Text style={styles.pickerText}>{city || 'Select your city'}</Text>
-            <Text style={styles.chevron}>{showCityPicker ? '\u25B2' : '\u25BC'}</Text>
-          </TouchableOpacity>
-          {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
-          {showCityPicker && (
-            <View style={styles.dropdown}>
-              <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
-                {PAKISTANI_CITIES.map(c => (
-                  <TouchableOpacity key={c} style={[styles.dropdownItem, city === c && styles.dropdownItemActive]} onPress={() => { setCity(c); setShowCityPicker(false); }}>
-                    <Text style={[styles.dropdownText, city === c && styles.dropdownTextActive]}>{c}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-        </View>
-
-        <Input label="Password" required value={password} onChangeText={setPassword} error={errors.password} secureTextEntry showPasswordToggle autoCapitalize="none" placeholder="Create a password" />
-        {password.length > 0 && (
-          <View style={styles.strengthRow}>
-            <View style={styles.strengthBar}><View style={[styles.strengthFill, { width: pwStrength.width as any, backgroundColor: pwStrength.color }]} /></View>
-            <Text style={[styles.strengthText, { color: pwStrength.color }]}>{pwStrength.level}</Text>
+        {errors.general && (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerText}>{errors.general}</Text>
           </View>
         )}
-        <Input label="Confirm Password" required value={confirmPassword} onChangeText={setConfirmPassword} error={errors.confirmPassword} secureTextEntry showPasswordToggle autoCapitalize="none" placeholder="Re-enter password" />
+
+        {/* Card 1 — Personal */}
+        <View style={styles.formCard}>
+          <Input label="Full Name" value={fullName} onChangeText={setFullName} error={errors.fullName} autoCapitalize="words" placeholder="Your full name" containerStyle={styles.cardInput} />
+          <View style={styles.cardDivider} />
+          <Input label="Phone Number" value={phone} onChangeText={setPhone} error={errors.phone} keyboardType="phone-pad" placeholder="03XX XXXXXXX" hint="We'll send a verification code" containerStyle={styles.cardInput} />
+          <View style={styles.cardDivider} />
+          <Input label="Email Address" value={email} onChangeText={setEmail} error={errors.email} keyboardType="email-address" autoCapitalize="none" placeholder="name@email.com" hint="For receipts and reminders" containerStyle={styles.cardInput} />
+        </View>
+
+        {/* Card 2 — Profile */}
+        <View style={styles.formCard}>
+          <Input label="Date of Birth" value={dob} onChangeText={setDob} error={errors.dob} placeholder="DD / MM / YYYY" hint="For birthday surprises" containerStyle={styles.cardInput} />
+          <View style={styles.cardDivider} />
+
+          {/* Gender */}
+          <View style={styles.cardInput}>
+            <Text style={styles.fieldLabel}>GENDER (OPTIONAL)</Text>
+            <View style={styles.chipRow}>
+              {[
+                { key: 'male', label: 'Male' },
+                { key: 'female', label: 'Female' },
+                { key: 'other', label: 'Other' },
+                { key: 'prefer_not_to_say', label: 'Prefer not to say' },
+              ].map(g => (
+                <TouchableOpacity key={g.key} style={[styles.chip, gender === g.key && styles.chipActive]} onPress={() => setGender(g.key)}>
+                  <Text style={[styles.chipText, gender === g.key && styles.chipTextActive]}>{g.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={styles.cardDivider} />
+
+          {/* City */}
+          <View style={styles.cardInput}>
+            <Text style={styles.fieldLabel}>CITY</Text>
+            <TouchableOpacity style={[styles.pickerButton, errors.city ? styles.pickerError : null]} onPress={() => setShowCityPicker(!showCityPicker)}>
+              <Text style={[styles.pickerText, !city && styles.pickerPlaceholder]}>{city || 'Select your city'}</Text>
+              <Text style={styles.chevron}>{'\u203A'}</Text>
+            </TouchableOpacity>
+            {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
+            {showCityPicker && (
+              <View style={styles.dropdown}>
+                <ScrollView nestedScrollEnabled style={{ maxHeight: 200 }}>
+                  {PAKISTANI_CITIES.map(c => (
+                    <TouchableOpacity key={c} style={[styles.dropdownItem, city === c && styles.dropdownItemActive]} onPress={() => { setCity(c); setShowCityPicker(false); }}>
+                      <Text style={[styles.dropdownText, city === c && styles.dropdownTextActive]}>{c}</Text>
+                      {city === c && <Text style={styles.dropdownCheck}>{'\u2713'}</Text>}
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Card 3 — Security */}
+        <View style={styles.formCard}>
+          <Input label="Password" value={password} onChangeText={setPassword} error={errors.password} secureTextEntry showPasswordToggle autoCapitalize="none" placeholder="Create a strong password" hint="At least 8 characters" containerStyle={styles.cardInput} />
+          {password.length > 0 && (
+            <View style={styles.strengthRow}>
+              <View style={styles.strengthTrack}>
+                {[0, 1, 2, 3].map(i => (
+                  <View key={i} style={[
+                    styles.strengthSegment,
+                    {
+                      backgroundColor: i < (pwStrength.width === '25%' ? 1 : pwStrength.width === '50%' ? 2 : pwStrength.width === '75%' ? 3 : 4)
+                        ? pwStrength.color : colors.border.subtle,
+                    },
+                  ]} />
+                ))}
+              </View>
+              <Text style={[styles.strengthLabel, { color: pwStrength.color }]}>{pwStrength.level}</Text>
+            </View>
+          )}
+          <View style={styles.cardDivider} />
+          <Input label="Confirm Password" value={confirmPassword} onChangeText={setConfirmPassword} error={errors.confirmPassword} secureTextEntry showPasswordToggle autoCapitalize="none" placeholder="Repeat your password" containerStyle={styles.cardInput} />
+        </View>
 
         {/* Terms */}
-        <TouchableOpacity style={styles.termsRow} onPress={() => setAgreeTerms(!agreeTerms)}>
-          <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
-            {agreeTerms && <Text style={styles.checkmark}>{'\u2713'}</Text>}
-          </View>
-          <Text style={styles.termsText}>I agree to the <Text style={styles.termsLink}>Terms & Conditions</Text> and <Text style={styles.termsLink}>Privacy Policy</Text></Text>
-        </TouchableOpacity>
-        {errors.terms && <Text style={styles.errorText}>{errors.terms}</Text>}
+        <Text style={styles.termsText}>
+          By creating an account you agree to our{' '}
+          <Text style={styles.termsLink}>Privacy Policy</Text> and{' '}
+          <Text style={styles.termsLink}>Terms of Use</Text>.
+        </Text>
 
-        <Button title="Create Account" onPress={handleRegister} variant="primary" size="large" loading={loading} style={styles.submitButton} />
+        {/* Submit */}
+        <Button title="Continue" onPress={handleRegister} variant="primary" loading={loading} style={styles.submitButton} />
 
-        <View style={styles.loginRow}>
-          <Text style={styles.loginText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.loginLink}>Login</Text>
-          </TouchableOpacity>
-        </View>
+        <View style={{ height: 40 }} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 50, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.neutral[100] },
-  backText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary },
-  content: { padding: spacing.lg, paddingBottom: 40 },
-  generalError: { backgroundColor: '#FEE2E2', color: colors.error, padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.md, fontSize: fontSize.sm, textAlign: 'center' },
-  fieldContainer: { marginBottom: spacing.md },
-  fieldLabel: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: spacing.xs + 2 },
-  required: { color: colors.error },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, borderRadius: borderRadius.full, backgroundColor: colors.neutral[100] },
-  chipActive: { backgroundColor: colors.primary[600] },
-  chipText: { fontSize: fontSize.sm, color: colors.text.secondary, fontWeight: fontWeight.medium },
-  chipTextActive: { color: '#ffffff' },
-  pickerButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: colors.neutral[200], borderRadius: borderRadius.md, paddingVertical: spacing.md - 4, paddingHorizontal: spacing.md },
-  pickerError: { borderColor: colors.error, borderWidth: 2 },
-  pickerText: { fontSize: fontSize.md, color: colors.text.primary },
-  chevron: { fontSize: 10, color: colors.neutral[400] },
-  dropdown: { marginTop: spacing.xs, borderWidth: 1, borderColor: colors.neutral[200], borderRadius: borderRadius.md, backgroundColor: '#ffffff', overflow: 'hidden' },
-  dropdownItem: { paddingVertical: spacing.md - 4, paddingHorizontal: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.neutral[100] },
-  dropdownItemActive: { backgroundColor: colors.primary[50] },
-  dropdownText: { fontSize: fontSize.md, color: colors.text.primary },
-  dropdownTextActive: { color: colors.primary[600], fontWeight: fontWeight.semibold },
-  errorText: { fontSize: fontSize.xs, color: colors.error, marginTop: spacing.xs },
-  strengthRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md, marginTop: -spacing.sm },
-  strengthBar: { flex: 1, height: 4, backgroundColor: colors.neutral[200], borderRadius: 2, overflow: 'hidden' },
-  strengthFill: { height: '100%', borderRadius: 2 },
-  strengthText: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
-  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md, marginTop: spacing.sm },
-  checkbox: { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: colors.neutral[300], alignItems: 'center', justifyContent: 'center' },
-  checkboxChecked: { backgroundColor: colors.primary[600], borderColor: colors.primary[600] },
-  checkmark: { color: '#ffffff', fontSize: 14, fontWeight: fontWeight.bold },
-  termsText: { flex: 1, fontSize: fontSize.sm, color: colors.text.secondary, lineHeight: 20 },
-  termsLink: { color: colors.primary[600], fontWeight: fontWeight.semibold },
-  submitButton: { marginTop: spacing.md, borderRadius: borderRadius.lg },
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.lg },
-  loginText: { fontSize: fontSize.md, color: colors.text.secondary },
-  loginLink: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.bold },
+  container: { flex: 1, backgroundColor: colors.canvas },
+  navBar: {
+    paddingHorizontal: spacing['6'],
+    paddingTop: 56,
+    paddingBottom: spacing['2'],
+  },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -spacing['2'] },
+  backIcon: { fontSize: 28, color: colors.text.primary },
+
+  content: { paddingHorizontal: spacing['6'] },
+
+  stepLabel: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.accent.text,
+    letterSpacing: 11 * 0.08,
+    marginTop: spacing['8'],
+  },
+  headline: {
+    fontSize: 30,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+    lineHeight: 38,
+    letterSpacing: -0.3,
+    marginTop: spacing['2'],
+  },
+  subheadline: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    lineHeight: 22,
+    marginTop: spacing['1'],
+    marginBottom: spacing['6'],
+  },
+
+  errorBanner: {
+    backgroundColor: colors.errorBg,
+    borderRadius: radius.md,
+    padding: spacing['4'],
+    marginBottom: spacing['4'],
+  },
+  errorBannerText: { fontSize: 14, color: colors.error, textAlign: 'center' },
+
+  // Form cards
+  formCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing['5'],
+    paddingVertical: spacing['4'],
+    marginBottom: spacing['4'],
+  },
+  cardInput: { marginBottom: 0 },
+  cardDivider: { height: 1, backgroundColor: colors.border.subtle, marginVertical: spacing['3'] },
+
+  // Field label
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.text.tertiary,
+    letterSpacing: 11 * 0.08,
+    marginBottom: spacing['2'],
+  },
+
+  // Gender chips
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing['2'] },
+  chip: {
+    paddingVertical: spacing['2'],
+    paddingHorizontal: spacing['4'],
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  chipActive: { backgroundColor: colors.text.primary, borderColor: colors.text.primary },
+  chipText: { fontSize: 13, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  chipTextActive: { color: colors.text.inverted },
+
+  // City picker
+  pickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: 56,
+    borderWidth: 1.5,
+    borderColor: colors.border.subtle,
+    borderRadius: 14,
+    paddingHorizontal: spacing['5'],
+    backgroundColor: colors.surface,
+  },
+  pickerError: { borderColor: colors.error },
+  pickerText: { fontSize: 16, color: colors.text.primary },
+  pickerPlaceholder: { color: colors.text.tertiary },
+  chevron: { fontSize: 18, color: colors.text.tertiary },
+  dropdown: {
+    marginTop: spacing['2'],
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing['3'],
+    paddingHorizontal: spacing['4'],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  dropdownItemActive: { backgroundColor: colors.surfaceRaised },
+  dropdownText: { fontSize: 15, color: colors.text.primary },
+  dropdownTextActive: { fontWeight: fontWeight.semibold },
+  dropdownCheck: { fontSize: 14, color: colors.accent.text },
+  errorText: { fontSize: 12, color: colors.error, marginTop: spacing['1'] },
+
+  // Password strength
+  strengthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing['2'],
+    marginTop: spacing['2'],
+    marginBottom: spacing['2'],
+  },
+  strengthTrack: { flex: 1, flexDirection: 'row', gap: 4 },
+  strengthSegment: { flex: 1, height: 4, borderRadius: 2 },
+  strengthLabel: { fontSize: 11, fontWeight: fontWeight.semibold },
+
+  // Terms
+  termsText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 20,
+    marginBottom: spacing['4'],
+  },
+  termsLink: { color: colors.accent.text },
+
+  submitButton: { marginBottom: spacing['4'] },
 });

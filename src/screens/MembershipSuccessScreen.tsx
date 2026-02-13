@@ -2,12 +2,13 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 import { formatCurrency, formatDate } from '../utils';
-import Card from '../components/Card';
 import Button from '../components/Button';
+
+const H = 24;
 
 interface MembershipSuccessScreenProps {
   navigation: NativeStackNavigationProp<RootStackParamList, 'MembershipSuccess'>;
@@ -22,65 +23,155 @@ export default function MembershipSuccessScreen({ navigation }: MembershipSucces
   }, [navigation]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.successIcon}>{'\u{1F389}'}</Text>
-      <Text style={styles.title}>Welcome to Mumuso!</Text>
-      <Text style={styles.subtitle}>Your membership is now active</Text>
+    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+      {/* Success icon */}
+      <View style={styles.checkCircle}>
+        <Text style={styles.checkMark}>{'\u2713'}</Text>
+      </View>
 
-      <Card style={styles.idCard} variant="elevated">
-        <Text style={styles.idLabel}>Your Member ID</Text>
-        <Text style={styles.idValue}>{membership?.member_id || 'MUM-XXXXX'}</Text>
-      </Card>
+      <Text style={styles.headline}>Welcome to Mumuso</Text>
+      <Text style={styles.subheadline}>Your membership is now active</Text>
 
-      <Card style={styles.detailsCard} variant="outlined">
+      {/* Card preview */}
+      <View style={styles.cardPreview}>
+        <Text style={styles.cardLabel}>MUMUSO MEMBER</Text>
+        <Text style={styles.cardId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
+      </View>
+
+      {/* Details */}
+      <View style={styles.detailsCard}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Member Since</Text>
           <Text style={styles.detailValue}>{membership ? formatDate(membership.purchase_date) : 'Today'}</Text>
         </View>
+        <View style={styles.divider} />
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Valid Until</Text>
           <Text style={styles.detailValue}>{membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
         </View>
+        <View style={styles.divider} />
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Amount Paid</Text>
           <Text style={styles.detailValue}>{formatCurrency(membership?.amount_paid || 2000)}</Text>
         </View>
+        <View style={styles.divider} />
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Discount</Text>
-          <Text style={styles.detailValue}>10% on all purchases</Text>
+          <Text style={styles.detailValueGold}>10% on all purchases</Text>
         </View>
-      </Card>
+      </View>
 
-      <Text style={styles.nextStepsTitle}>Next Steps</Text>
-      {['Visit any Mumuso store', 'Show your QR code at checkout', 'Enjoy 10% off instantly!'].map((step, i) => (
+      {/* Next steps */}
+      <Text style={styles.stepsLabel}>NEXT STEPS</Text>
+      {['Visit any Mumuso store', 'Show your QR code at checkout', 'Enjoy 10% off instantly'].map((step, i) => (
         <View key={i} style={styles.stepRow}>
           <View style={styles.stepCircle}><Text style={styles.stepNum}>{i + 1}</Text></View>
           <Text style={styles.stepText}>{step}</Text>
         </View>
       ))}
 
-      <Button title="Go to Home" onPress={() => navigation.replace('MainTabs')} variant="primary" size="large" style={styles.homeButton} />
+      <Button title="Go to Home" onPress={() => navigation.replace('MainTabs')} variant="primary" style={styles.homeButton} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  content: { alignItems: 'center', padding: spacing.lg, paddingTop: 60, paddingBottom: 40 },
-  successIcon: { fontSize: 64, marginBottom: spacing.md },
-  title: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary, textAlign: 'center' },
-  subtitle: { fontSize: fontSize.md, color: colors.success, fontWeight: fontWeight.semibold, marginTop: spacing.xs, marginBottom: spacing.lg },
-  idCard: { width: '100%', alignItems: 'center', backgroundColor: colors.primary[50], borderWidth: 2, borderColor: colors.primary[200], marginBottom: spacing.lg },
-  idLabel: { fontSize: fontSize.sm, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  idValue: { fontSize: 28, fontWeight: fontWeight.bold, color: colors.primary[700], letterSpacing: 3, marginTop: spacing.sm },
-  detailsCard: { width: '100%', marginBottom: spacing.lg },
-  detailRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.neutral[50] },
-  detailLabel: { fontSize: fontSize.sm, color: colors.text.secondary },
-  detailValue: { fontSize: fontSize.sm, color: colors.text.primary, fontWeight: fontWeight.semibold },
-  nextStepsTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, alignSelf: 'flex-start', marginBottom: spacing.md },
-  stepRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md, alignSelf: 'flex-start' },
-  stepCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: colors.primary[100], alignItems: 'center', justifyContent: 'center' },
-  stepNum: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.primary[600] },
-  stepText: { fontSize: fontSize.md, color: colors.text.primary },
-  homeButton: { width: '100%', marginTop: spacing.lg, borderRadius: borderRadius.lg },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  content: { alignItems: 'center', paddingHorizontal: H, paddingTop: 80, paddingBottom: 40 },
+
+  checkCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.accent.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing['6'],
+  },
+  checkMark: { fontSize: 32, color: '#FFFFFF', fontWeight: fontWeight.bold },
+
+  headline: {
+    fontSize: 30,
+    fontWeight: fontWeight.semibold,
+    color: colors.text.primary,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  subheadline: {
+    fontSize: 15,
+    color: colors.success,
+    fontWeight: fontWeight.medium,
+    marginTop: spacing['2'],
+    marginBottom: spacing['8'],
+  },
+
+  cardPreview: {
+    width: '100%',
+    backgroundColor: colors.surfaceDark,
+    borderRadius: radius['2xl'],
+    padding: spacing['6'],
+    alignItems: 'center',
+    marginBottom: spacing['6'],
+    ...shadows.membership,
+  },
+  cardLabel: {
+    fontSize: 10,
+    fontWeight: fontWeight.medium,
+    color: colors.text.invertedMuted,
+    letterSpacing: 10 * 0.14,
+    marginBottom: spacing['2'],
+  },
+  cardId: {
+    fontSize: 24,
+    fontWeight: fontWeight.bold,
+    color: colors.text.inverted,
+    letterSpacing: 2,
+  },
+
+  detailsCard: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing['5'],
+    ...shadows.card,
+    marginBottom: spacing['8'],
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 48,
+  },
+  detailLabel: { fontSize: 14, color: colors.text.tertiary },
+  detailValue: { fontSize: 14, color: colors.text.primary, fontWeight: fontWeight.medium },
+  detailValueGold: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.semibold },
+  divider: { height: 1, backgroundColor: colors.border.subtle },
+
+  stepsLabel: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.text.tertiary,
+    letterSpacing: 11 * 0.08,
+    alignSelf: 'flex-start',
+    marginBottom: spacing['4'],
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing['4'],
+    marginBottom: spacing['4'],
+    alignSelf: 'flex-start',
+  },
+  stepCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepNum: { fontSize: 14, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  stepText: { fontSize: 15, color: colors.text.primary },
+
+  homeButton: { width: '100%', marginTop: spacing['4'] },
 });

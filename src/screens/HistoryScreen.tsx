@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { formatCurrency, formatDate } from '../utils';
 import { MOCK_TRANSACTIONS } from '../services/mockData';
-import Card from '../components/Card';
 import EmptyState from '../components/EmptyState';
+
+const H = 24;
 
 interface HistoryScreenProps { navigation: NativeStackNavigationProp<RootStackParamList>; }
 
@@ -15,7 +16,6 @@ type FilterPeriod = '7d' | '30d' | '3m' | 'all';
 
 export default function HistoryScreen({ navigation }: HistoryScreenProps) {
   const [filter, setFilter] = useState<FilterPeriod>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'amount'>('date');
   const [refreshing, setRefreshing] = useState(false);
 
   const now = new Date();
@@ -27,76 +27,170 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
     if (filter === '30d') return diffDays <= 30;
     if (filter === '3m') return diffDays <= 90;
     return true;
-  }).sort((a, b) => sortBy === 'date' ? new Date(b.date).getTime() - new Date(a.date).getTime() : b.total - a.total);
+  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const totalSpent = filtered.reduce((s, t) => s + t.total, 0);
   const totalSaved = filtered.reduce((s, t) => s + t.discount_amount, 0);
+  const txnCount = filtered.length;
 
   const onRefresh = async () => { setRefreshing(true); await new Promise(r => setTimeout(r, 1000)); setRefreshing(false); };
 
   const FILTERS: { key: FilterPeriod; label: string }[] = [
-    { key: '7d', label: '7 Days' }, { key: '30d', label: '30 Days' }, { key: '3m', label: '3 Months' }, { key: 'all', label: 'All' },
+    { key: 'all', label: 'All' }, { key: '7d', label: '7 days' }, { key: '30d', label: '30 days' }, { key: '3m', label: '3 months' },
   ];
 
+  // Group by date
+  const grouped: Record<string, typeof filtered> = {};
+  filtered.forEach(t => {
+    const key = formatDate(t.date);
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(t);
+  });
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Purchase History</Text>
-        <TouchableOpacity onPress={() => setSortBy(sortBy === 'date' ? 'amount' : 'date')}>
-          <Text style={styles.sortText}>Sort: {sortBy === 'date' ? 'Date' : 'Amount'}</Text>
-        </TouchableOpacity>
+    <View style={styles.screen}>
+      {/* Nav */}
+      <View style={styles.navBar}>
+        <Text style={styles.navTitle}>History</Text>
       </View>
+
+      {/* Filter pills */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
         {FILTERS.map(f => (
-          <TouchableOpacity key={f.key} style={[styles.filterChip, filter === f.key && styles.filterChipActive]} onPress={() => setFilter(f.key)}>
+          <TouchableOpacity key={f.key} style={[styles.filterPill, filter === f.key && styles.filterPillActive]} onPress={() => setFilter(f.key)}>
             <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>{f.label}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* Summary tiles */}
       <View style={styles.summaryRow}>
-        <Card style={styles.summaryCard}><Text style={styles.summaryValue}>{formatCurrency(totalSpent)}</Text><Text style={styles.summaryLabel}>Total Spent</Text></Card>
-        <Card style={styles.summaryCard}><Text style={[styles.summaryValue, { color: colors.success }]}>{formatCurrency(totalSaved)}</Text><Text style={styles.summaryLabel}>Total Saved</Text></Card>
+        <View style={styles.summaryTile}>
+          <Text style={styles.summaryEyebrow}>SPENT</Text>
+          <Text style={styles.summaryValue}>{formatCurrency(totalSpent)}</Text>
+        </View>
+        <View style={styles.summaryTile}>
+          <Text style={styles.summaryEyebrow}>SAVED</Text>
+          <Text style={styles.summaryValueGold}>{formatCurrency(totalSaved)}</Text>
+        </View>
+        <View style={styles.summaryTile}>
+          <Text style={styles.summaryEyebrow}>VISITS</Text>
+          <Text style={styles.summaryValue}>{txnCount}</Text>
+        </View>
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        {filtered.length === 0 ? (
-          <EmptyState icon={'\u{1F6CD}'} title="No purchases yet" message="Your purchase history will appear here after your first transaction" />
+
+      {/* Transaction list */}
+      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.tertiary} />}>
+        {txnCount === 0 ? (
+          <EmptyState title="No purchases yet" message="Your purchase history will appear here after your first transaction" />
         ) : (
-          filtered.map(txn => (
-            <TouchableOpacity key={txn.id} onPress={() => navigation.navigate('TransactionDetail', { transaction_id: txn.id })}>
-              <Card style={styles.txnCard} variant="outlined">
-                <View style={styles.txnRow}>
-                  <View><Text style={styles.txnStore}>{txn.store_name}</Text><Text style={styles.txnDate}>{formatDate(txn.date)} \u00B7 {txn.items.length} items</Text></View>
-                  <View style={styles.txnRight}><Text style={styles.txnTotal}>{formatCurrency(txn.total)}</Text><Text style={styles.txnSaved}>-{formatCurrency(txn.discount_amount)}</Text></View>
-                </View>
-              </Card>
-            </TouchableOpacity>
+          Object.entries(grouped).map(([date, txns]) => (
+            <View key={date}>
+              <Text style={styles.dateHeader}>{date}</Text>
+              <View style={styles.txnCard}>
+                {txns.map((txn, idx) => {
+                  const initials = txn.store_name.replace('Mumuso ', '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+                  const isLast = idx === txns.length - 1;
+                  return (
+                    <TouchableOpacity key={txn.id} onPress={() => navigation.navigate('TransactionDetail', { transaction_id: txn.id })} activeOpacity={0.7}>
+                      <View style={styles.txnRow}>
+                        <View style={styles.txnAvatar}><Text style={styles.txnAvatarText}>{initials}</Text></View>
+                        <View style={styles.txnCenter}>
+                          <Text style={styles.txnStore} numberOfLines={1}>{txn.store_name}</Text>
+                          <Text style={styles.txnMeta}>{txn.items.length} items</Text>
+                        </View>
+                        <View style={styles.txnRight}>
+                          <Text style={styles.txnTotal}>{formatCurrency(txn.total)}</Text>
+                          <Text style={styles.txnSaved}>{'\u2013'}{formatCurrency(txn.discount_amount)}</Text>
+                        </View>
+                      </View>
+                      {!isLast && <View style={styles.txnDivider} />}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
           ))
         )}
-        <View style={{ height: 100 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.neutral[50] },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 50, paddingBottom: spacing.md, backgroundColor: '#ffffff' },
-  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  sortText: { fontSize: fontSize.sm, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  filterRow: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm + 2, backgroundColor: '#ffffff', gap: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.neutral[100] },
-  filterChip: { paddingVertical: spacing.xs + 2, paddingHorizontal: spacing.md, borderRadius: borderRadius.full, backgroundColor: colors.neutral[100] },
-  filterChipActive: { backgroundColor: colors.primary[600] },
-  filterText: { fontSize: fontSize.sm, color: colors.text.secondary, fontWeight: fontWeight.medium },
-  filterTextActive: { color: '#ffffff' },
-  summaryRow: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg, marginTop: spacing.md },
-  summaryCard: { flex: 1, alignItems: 'center', paddingVertical: spacing.md },
-  summaryValue: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary },
-  summaryLabel: { fontSize: fontSize.xs, color: colors.text.secondary, marginTop: spacing.xs },
-  txnCard: { marginHorizontal: spacing.lg, marginTop: spacing.sm },
-  txnRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  txnStore: { fontSize: fontSize.md, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  txnDate: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: 2 },
-  txnRight: { alignItems: 'flex-end' },
-  txnTotal: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: colors.text.primary },
-  txnSaved: { fontSize: fontSize.sm, color: colors.success, marginTop: 2 },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  navBar: {
+    paddingHorizontal: H,
+    paddingTop: 56,
+    paddingBottom: spacing['2'],
+  },
+  navTitle: { fontSize: 30, fontWeight: fontWeight.semibold, color: colors.text.primary, letterSpacing: -0.3 },
+
+  filterRow: { paddingHorizontal: H, paddingVertical: spacing['3'], gap: spacing['2'] },
+  filterPill: {
+    paddingVertical: spacing['2'],
+    paddingHorizontal: spacing['4'],
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  filterPillActive: { backgroundColor: colors.text.primary, borderColor: colors.text.primary },
+  filterText: { fontSize: 13, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  filterTextActive: { color: colors.text.inverted },
+
+  summaryRow: { flexDirection: 'row', gap: spacing['3'], paddingHorizontal: H, marginBottom: spacing['6'] },
+  summaryTile: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing['4'],
+    ...shadows.card,
+  },
+  summaryEyebrow: { fontSize: 10, fontWeight: fontWeight.medium, color: colors.text.tertiary, letterSpacing: 10 * 0.1, marginBottom: spacing['1'] },
+  summaryValue: { fontSize: 20, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  summaryValueGold: { fontSize: 20, fontWeight: fontWeight.semibold, color: colors.accent.text },
+
+  dateHeader: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.text.tertiary,
+    letterSpacing: 11 * 0.08,
+    paddingHorizontal: H,
+    marginBottom: spacing['2'],
+    marginTop: spacing['2'],
+  },
+  txnCard: {
+    marginHorizontal: H,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    ...shadows.card,
+    overflow: 'hidden',
+    marginBottom: spacing['4'],
+  },
+  txnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing['4'],
+    paddingHorizontal: spacing['5'],
+    height: 68,
+  },
+  txnAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing['3'],
+  },
+  txnAvatarText: { fontSize: 13, fontWeight: fontWeight.semibold, color: '#FFFFFF' },
+  txnCenter: { flex: 1 },
+  txnStore: { fontSize: 15, fontWeight: fontWeight.medium, color: colors.text.primary },
+  txnMeta: { fontSize: 12, color: colors.text.tertiary, marginTop: 2 },
+  txnRight: { alignItems: 'flex-end', marginLeft: spacing['3'] },
+  txnTotal: { fontSize: 15, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  txnSaved: { fontSize: 12, fontWeight: fontWeight.medium, color: colors.accent.text, marginTop: 2 },
+  txnDivider: { height: 1, backgroundColor: colors.border.subtle, marginLeft: 68 },
 });

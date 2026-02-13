@@ -2,23 +2,24 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { formatCurrency } from '../utils';
 import { MEMBERSHIP_FEE, DISCOUNT_PERCENTAGE } from '../services/mockData';
-import Card from '../components/Card';
 import Button from '../components/Button';
 import Input from '../components/Input';
+
+const H = 24;
 
 interface MembershipPurchaseScreenProps {
   navigation: NativeStackNavigationProp<RootStackParamList, 'MembershipPurchase'>;
 }
 
 const PAYMENT_METHODS = [
-  { id: 'jazzcash', name: 'JazzCash', icon: '\u{1F4F1}' },
-  { id: 'easypaisa', name: 'EasyPaisa', icon: '\u{1F4B3}' },
-  { id: 'card', name: 'Credit/Debit Card', icon: '\u{1F4B3}' },
-  { id: 'bank', name: 'Bank Transfer', icon: '\u{1F3E6}' },
+  { id: 'jazzcash', name: 'JazzCash' },
+  { id: 'easypaisa', name: 'EasyPaisa' },
+  { id: 'card', name: 'Card' },
+  { id: 'bank', name: 'Bank' },
 ];
 
 const BENEFITS = [
@@ -36,7 +37,6 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [showPromo, setShowPromo] = useState(false);
-  const [agreeTerms, setAgreeTerms] = useState(false);
 
   const finalAmount = MEMBERSHIP_FEE - promoDiscount;
   const monthlyBreakdown = Math.round(finalAmount / 12);
@@ -48,109 +48,171 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
       setPromoDiscount(200);
       setPromoApplied(true);
     } else {
-      Alert.alert('Invalid Code', 'This promo code is not valid or has expired.');
+      Alert.alert('Invalid code', 'This promo code is not valid or has expired.');
       setPromoApplied(false);
       setPromoDiscount(0);
     }
   };
 
   const handleProceed = () => {
-    if (!selectedMethod) { Alert.alert('Error', 'Please select a payment method'); return; }
-    if (!agreeTerms) { Alert.alert('Error', 'Please agree to the terms & conditions'); return; }
+    if (!selectedMethod) { Alert.alert('Select payment', 'Please choose a payment method'); return; }
     navigation.navigate('PaymentProcessing', { method: selectedMethod, amount: finalAmount });
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{'\u2190'} Back</Text>
+    <View style={styles.screen}>
+      {/* Dark hero zone */}
+      <View style={styles.heroZone}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backIcon}>{'\u2039'}</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Membership</Text>
-        <View style={{ width: 60 }} />
+        <Text style={styles.heroLabel}>ANNUAL MEMBERSHIP</Text>
+        <Text style={styles.heroPrice}>{formatCurrency(finalAmount)}</Text>
+        {promoApplied && <Text style={styles.heroOriginal}>Was {formatCurrency(MEMBERSHIP_FEE)}</Text>}
+        <Text style={styles.heroBreakdown}>Just {formatCurrency(monthlyBreakdown)}/month \u00B7 Break even at {formatCurrency(breakEvenSpend)}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Card style={styles.priceCard} variant="elevated">
-          <Text style={styles.priceLabel}>Annual Membership</Text>
-          <Text style={styles.price}>{formatCurrency(finalAmount)}</Text>
-          {promoApplied && <Text style={styles.originalPrice}>Was {formatCurrency(MEMBERSHIP_FEE)}</Text>}
-          <Text style={styles.priceBreakdown}>Just {formatCurrency(monthlyBreakdown)}/month</Text>
-          <Text style={styles.breakEven}>Break even after spending {formatCurrency(breakEvenSpend)}</Text>
-        </Card>
+        {/* Benefits */}
+        <Text style={styles.sectionLabel}>WHAT YOU GET</Text>
+        <View style={styles.benefitsCard}>
+          {BENEFITS.map((b, i) => (
+            <View key={i} style={styles.benefitRow}>
+              <Text style={styles.benefitCheck}>{'\u2713'}</Text>
+              <Text style={styles.benefitText}>{b}</Text>
+            </View>
+          ))}
+        </View>
 
-        <Text style={styles.sectionTitle}>Benefits</Text>
-        {BENEFITS.map((b, i) => (
-          <View key={i} style={styles.benefitRow}>
-            <Text style={styles.benefitCheck}>{'\u2713'}</Text>
-            <Text style={styles.benefitText}>{b}</Text>
-          </View>
-        ))}
+        {/* Payment method */}
+        <Text style={styles.sectionLabel}>PAYMENT METHOD</Text>
+        <View style={styles.methodRow}>
+          {PAYMENT_METHODS.map(m => (
+            <TouchableOpacity
+              key={m.id}
+              style={[styles.methodChip, selectedMethod === m.id && styles.methodChipActive]}
+              onPress={() => setSelectedMethod(m.id)}>
+              <Text style={[styles.methodText, selectedMethod === m.id && styles.methodTextActive]}>{m.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        {/* NOT SUPPORTED YET: Actual payment processing requires payment gateway integration */}
 
-        <Text style={styles.sectionTitle}>Payment Method</Text>
-        {PAYMENT_METHODS.map(m => (
-          <TouchableOpacity key={m.id} style={[styles.methodCard, selectedMethod === m.id && styles.methodCardActive]} onPress={() => setSelectedMethod(m.id)}>
-            <Text style={styles.methodIcon}>{m.icon}</Text>
-            <Text style={styles.methodName}>{m.name}</Text>
-            <View style={[styles.radio, selectedMethod === m.id && styles.radioActive]} />
-          </TouchableOpacity>
-        ))}
-
+        {/* Promo */}
         <TouchableOpacity onPress={() => setShowPromo(!showPromo)} style={styles.promoToggle}>
-          <Text style={styles.promoToggleText}>{showPromo ? 'Hide' : 'Have a'} Promo Code{showPromo ? '' : '?'}</Text>
+          <Text style={styles.promoToggleText}>{showPromo ? 'Hide promo code' : 'Have a promo code?'}</Text>
         </TouchableOpacity>
         {showPromo && (
           <View style={styles.promoRow}>
             <Input value={promoCode} onChangeText={setPromoCode} placeholder="Enter code" containerStyle={styles.promoInput} autoCapitalize="characters" />
-            <Button title="Apply" onPress={handleApplyPromo} variant="secondary" size="small" />
+            <Button title="Apply" onPress={handleApplyPromo} variant="secondary" style={styles.promoBtn} />
           </View>
         )}
-        {promoApplied && <Text style={styles.promoSuccess}>Promo applied! You save {formatCurrency(promoDiscount)}</Text>}
+        {promoApplied && <Text style={styles.promoSuccess}>{'\u2713'} Promo applied \u2014 you save {formatCurrency(promoDiscount)}</Text>}
 
-        <TouchableOpacity style={styles.termsRow} onPress={() => setAgreeTerms(!agreeTerms)}>
-          <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
-            {agreeTerms && <Text style={styles.checkmark}>{'\u2713'}</Text>}
-          </View>
-          <Text style={styles.termsText}>I agree to the membership Terms & Conditions</Text>
-        </TouchableOpacity>
+        {/* Terms */}
+        <Text style={styles.termsText}>
+          By purchasing you agree to the{' '}
+          <Text style={styles.termsLink}>Membership Terms</Text>.{'\n'}
+          Auto-renewal can be managed in your profile.
+        </Text>
 
-        <Button title={`Pay ${formatCurrency(finalAmount)}`} onPress={handleProceed} variant="primary" size="large" style={styles.payButton} />
+        <Button title={`Pay ${formatCurrency(finalAmount)}`} onPress={handleProceed} variant="gold" style={styles.payButton} />
+
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 50, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.neutral[100] },
-  backText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary },
-  content: { padding: spacing.lg, paddingBottom: 40 },
-  priceCard: { alignItems: 'center', marginBottom: spacing.lg, backgroundColor: colors.primary[50] },
-  priceLabel: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  price: { fontSize: 36, fontWeight: fontWeight.bold, color: colors.primary[700], marginVertical: spacing.sm },
-  originalPrice: { fontSize: fontSize.md, color: colors.neutral[400], textDecorationLine: 'line-through' },
-  priceBreakdown: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: spacing.xs },
-  breakEven: { fontSize: fontSize.xs, color: colors.neutral[400], marginTop: 2 },
-  sectionTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary, marginBottom: spacing.md, marginTop: spacing.lg },
-  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
-  benefitCheck: { fontSize: fontSize.md, color: colors.success, fontWeight: fontWeight.bold },
-  benefitText: { fontSize: fontSize.md, color: colors.text.primary, flex: 1 },
-  methodCard: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderWidth: 1, borderColor: colors.neutral[200], borderRadius: borderRadius.md, marginBottom: spacing.sm },
-  methodCardActive: { borderColor: colors.primary[600], backgroundColor: colors.primary[50] },
-  methodIcon: { fontSize: 20, marginRight: spacing.md },
-  methodName: { flex: 1, fontSize: fontSize.md, color: colors.text.primary, fontWeight: fontWeight.medium },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: colors.neutral[300] },
-  radioActive: { borderColor: colors.primary[600], backgroundColor: colors.primary[600] },
-  promoToggle: { marginTop: spacing.md, marginBottom: spacing.sm },
-  promoToggleText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  promoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+
+  heroZone: {
+    backgroundColor: colors.surfaceDarker,
+    paddingHorizontal: H,
+    paddingTop: 56,
+    paddingBottom: spacing['8'],
+    borderBottomLeftRadius: radius['3xl'],
+    borderBottomRightRadius: radius['3xl'],
+  },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -spacing['2'], marginBottom: spacing['4'] },
+  backIcon: { fontSize: 28, color: colors.text.inverted },
+  heroLabel: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.accent.default,
+    letterSpacing: 11 * 0.14,
+    marginBottom: spacing['2'],
+  },
+  heroPrice: {
+    fontSize: 48,
+    fontWeight: fontWeight.bold,
+    color: colors.text.inverted,
+    letterSpacing: -1,
+  },
+  heroOriginal: {
+    fontSize: 15,
+    color: colors.text.invertedMuted,
+    textDecorationLine: 'line-through',
+    marginTop: spacing['1'],
+  },
+  heroBreakdown: {
+    fontSize: 13,
+    color: colors.text.invertedMuted,
+    marginTop: spacing['2'],
+  },
+
+  content: { paddingHorizontal: H, paddingTop: spacing['6'] },
+
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.text.tertiary,
+    letterSpacing: 11 * 0.08,
+    marginBottom: spacing['3'],
+    marginTop: spacing['4'],
+  },
+
+  benefitsCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing['5'],
+    ...shadows.card,
+    marginBottom: spacing['2'],
+  },
+  benefitRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing['3'], marginBottom: spacing['3'] },
+  benefitCheck: { fontSize: 14, color: colors.success, fontWeight: fontWeight.bold, marginTop: 2 },
+  benefitText: { fontSize: 15, color: colors.text.primary, flex: 1, lineHeight: 22 },
+
+  methodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing['2'], marginBottom: spacing['2'] },
+  methodChip: {
+    paddingVertical: spacing['3'],
+    paddingHorizontal: spacing['5'],
+    borderRadius: radius.full,
+    backgroundColor: colors.surfaceRaised,
+    borderWidth: 1.5,
+    borderColor: colors.border.subtle,
+  },
+  methodChipActive: { backgroundColor: colors.text.primary, borderColor: colors.text.primary },
+  methodText: { fontSize: 14, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  methodTextActive: { color: colors.text.inverted },
+
+  promoToggle: { paddingVertical: spacing['3'] },
+  promoToggleText: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.medium },
+  promoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing['2'] },
   promoInput: { flex: 1, marginBottom: 0 },
-  promoSuccess: { fontSize: fontSize.sm, color: colors.success, fontWeight: fontWeight.semibold, marginTop: spacing.xs },
-  termsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.md },
-  checkbox: { width: 22, height: 22, borderRadius: 4, borderWidth: 2, borderColor: colors.neutral[300], alignItems: 'center', justifyContent: 'center' },
-  checkboxChecked: { backgroundColor: colors.primary[600], borderColor: colors.primary[600] },
-  checkmark: { color: '#ffffff', fontSize: 14, fontWeight: fontWeight.bold },
-  termsText: { flex: 1, fontSize: fontSize.sm, color: colors.text.secondary },
-  payButton: { borderRadius: borderRadius.lg },
+  promoBtn: { height: 56, paddingHorizontal: spacing['5'] },
+  promoSuccess: { fontSize: 13, color: colors.success, fontWeight: fontWeight.medium, marginTop: spacing['2'], marginBottom: spacing['2'] },
+
+  termsText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    lineHeight: 20,
+    marginTop: spacing['6'],
+    marginBottom: spacing['4'],
+  },
+  termsLink: { color: colors.accent.text },
+
+  payButton: { marginBottom: spacing['4'] },
 });

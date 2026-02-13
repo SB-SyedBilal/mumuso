@@ -1,31 +1,38 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius } from '../constants/dimensions';
+import { spacing, radius, shadows } from '../constants/dimensions';
 
 interface CardProps {
   children: React.ReactNode;
-  variant?: 'default' | 'elevated' | 'outlined';
+  variant?: 'default' | 'elevated' | 'flat';
   style?: ViewStyle;
 }
 
 export default function Card({ children, variant = 'default', style }: CardProps) {
   return (
-    <View style={[styles.base, styles[variant], style]}>
+    <View style={[styles.base, variantStyles[variant], style]}>
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  base: { padding: spacing.md, borderRadius: borderRadius.lg, backgroundColor: '#ffffff' },
+  base: {
+    padding: spacing['6'],
+    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+  },
+});
+
+const variantStyles: Record<string, ViewStyle> = {
   default: {
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05, shadowRadius: 3, elevation: 2,
+    ...shadows.card,
   },
   elevated: {
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1, shadowRadius: 8, elevation: 5,
+    ...shadows.md,
   },
-  outlined: { borderWidth: 1, borderColor: colors.neutral[200] },
-});
+  flat: {
+    backgroundColor: colors.surfaceRaised,
+  },
+};

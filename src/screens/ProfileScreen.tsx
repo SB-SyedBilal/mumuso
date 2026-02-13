@@ -2,127 +2,217 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 import { formatDate, getDaysRemaining } from '../utils';
-import Card from '../components/Card';
 import Button from '../components/Button';
+
+const H = 24;
 
 interface ProfileScreenProps { navigation: NativeStackNavigationProp<RootStackParamList>; }
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
   const { user, membership, logout, updateMembership } = useAuth();
   const daysRemaining = membership ? getDaysRemaining(membership.expiry_date) : 0;
+  const isActive = membership?.status === 'active' && daysRemaining > 0;
+  const initials = (user?.full_name || 'M').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
+    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Logout', style: 'destructive', onPress: () => logout() },
+      { text: 'Sign Out', style: 'destructive', onPress: () => logout() },
     ]);
   };
 
-  const renderRow = (label: string, value?: string, onPress?: () => void) => (
-    <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress}>
-      <Text style={styles.rowLabel}>{label}</Text>
+  const SettingRow = ({ label, value, onPress, danger }: { label: string; value?: string; onPress?: () => void; danger?: boolean }) => (
+    <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress} activeOpacity={onPress ? 0.7 : 1}>
+      <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>{label}</Text>
       <View style={styles.rowRight}>
-        {value && <Text style={styles.rowValue}>{value}</Text>}
-        {onPress && <Text style={styles.chevron}>{'\u203A'}</Text>}
+        {value ? <Text style={styles.rowValue}>{value}</Text> : null}
+        {onPress ? <Text style={styles.chevron}>{'\u203A'}</Text> : null}
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}><Text style={styles.editBtn}>Edit</Text></TouchableOpacity>
+    <ScrollView style={styles.screen} showsVerticalScrollIndicator={false}>
+      {/* Nav */}
+      <View style={styles.navBar}>
+        <Text style={styles.navTitle}>Profile</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
+          <Text style={styles.editLink}>Edit</Text>
+        </TouchableOpacity>
       </View>
-      <View style={styles.profileSection}>
-        <View style={styles.avatar}><Text style={styles.avatarText}>{user?.full_name?.charAt(0)?.toUpperCase() || 'M'}</Text></View>
+
+      {/* Profile header */}
+      <View style={styles.profileHeader}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials}</Text>
+        </View>
         <Text style={styles.name}>{user?.full_name || 'Member'}</Text>
         <Text style={styles.memberId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
         <Text style={styles.since}>Member since {user ? formatDate(user.created_at) : 'N/A'}</Text>
       </View>
-      <Card style={styles.statusCard}>
-        <View style={styles.statusRow}>
-          <View><Text style={styles.statusLabel}>Membership Status</Text>
-            <Text style={[styles.statusValue, membership?.status === 'active' ? styles.activeText : styles.expiredText]}>
-              {membership?.status === 'active' ? (daysRemaining <= 30 ? `Expiring Soon (${daysRemaining} days)` : 'Active') : 'Expired'}
-            </Text></View>
-          <View style={[styles.dot, membership?.status === 'active' ? (daysRemaining <= 30 ? styles.warningDot : styles.activeDot) : styles.expiredDot]} />
-        </View>
-        <Text style={styles.expiry}>Valid until: {membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
-        {daysRemaining <= 30 && <Button title="Renew Now" onPress={() => navigation.navigate('RenewalScreen')} variant="primary" size="small" style={{ marginTop: spacing.md, alignSelf: 'flex-start' }} />}
-      </Card>
-      <View style={styles.section}><Text style={styles.sectionTitle}>PERSONAL INFORMATION</Text>
-        <Card variant="outlined">
-          {renderRow('Email', user?.email || 'N/A')}
-          {renderRow('Phone', user?.phone_number || 'N/A')}
-          {renderRow('Date of Birth', user?.date_of_birth ? formatDate(user.date_of_birth) : 'N/A')}
-          {renderRow('City', user?.city || 'N/A')}
-        </Card>
-      </View>
-      <View style={styles.section}><Text style={styles.sectionTitle}>MEMBERSHIP SETTINGS</Text>
-        <Card variant="outlined">
-          <View style={styles.row}><Text style={styles.rowLabel}>Auto-Renew</Text>
-            <Switch value={membership?.auto_renew || false} onValueChange={(v) => updateMembership({ auto_renew: v })} trackColor={{ false: colors.neutral[200], true: colors.primary[400] }} thumbColor={membership?.auto_renew ? colors.primary[600] : colors.neutral[400]} />
+
+      {/* Membership status */}
+      <View style={styles.statusCard}>
+        <View style={styles.statusTopRow}>
+          <View>
+            <Text style={styles.statusEyebrow}>MEMBERSHIP</Text>
+            <Text style={[styles.statusValue, isActive ? styles.activeText : styles.expiredText]}>
+              {isActive ? (daysRemaining <= 30 ? `Expiring in ${daysRemaining} days` : 'Active') : 'Expired'}
+            </Text>
           </View>
-        </Card>
+          <View style={[styles.statusDot, isActive ? (daysRemaining <= 30 ? styles.warningDot : styles.activeDot) : styles.expiredDot]} />
+        </View>
+        <Text style={styles.validUntil}>Valid until {membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
+        {daysRemaining <= 30 && daysRemaining > 0 && (
+          <Button title="Renew" onPress={() => navigation.navigate('RenewalScreen')} variant="gold" style={styles.renewBtn} />
+        )}
       </View>
-      <View style={styles.section}><Text style={styles.sectionTitle}>APP SETTINGS</Text>
-        <Card variant="outlined">
-          {renderRow('Notifications', undefined, () => navigation.navigate('Notifications'))}
-          {renderRow('Help & Support', undefined, () => navigation.navigate('HelpSupport'))}
-          {renderRow('About App', 'v1.0.0')}
-        </Card>
+
+      {/* Personal info */}
+      <Text style={styles.sectionLabel}>PERSONAL INFORMATION</Text>
+      <View style={styles.settingsCard}>
+        <SettingRow label="Email" value={user?.email || 'N/A'} />
+        <View style={styles.divider} />
+        <SettingRow label="Phone" value={user?.phone_number || 'N/A'} />
+        <View style={styles.divider} />
+        <SettingRow label="Date of Birth" value={user?.date_of_birth ? formatDate(user.date_of_birth) : 'N/A'} />
+        <View style={styles.divider} />
+        <SettingRow label="City" value={user?.city || 'N/A'} />
       </View>
-      <View style={styles.section}><Text style={styles.sectionTitle}>ACCOUNT</Text>
-        <Card variant="outlined">
-          {renderRow('Change Password', undefined, () => navigation.navigate('ChangePassword'))}
-          <TouchableOpacity style={styles.row} onPress={() => Alert.alert('Delete Account', 'This feature will be available once backend is connected.', [{ text: 'OK' }])}>
-            <Text style={styles.dangerText}>Delete Account</Text><Text style={styles.chevron}>{'\u203A'}</Text>
-          </TouchableOpacity>
-        </Card>
+
+      {/* Membership settings */}
+      <Text style={styles.sectionLabel}>MEMBERSHIP</Text>
+      <View style={styles.settingsCard}>
+        <View style={styles.row}>
+          <Text style={styles.rowLabel}>Auto-Renew</Text>
+          <Switch
+            value={membership?.auto_renew || false}
+            onValueChange={(v) => updateMembership({ auto_renew: v })}
+            trackColor={{ false: colors.border.default, true: colors.accent.default }}
+            thumbColor="#FFFFFF"
+          />
+        </View>
       </View>
-      <View style={styles.logoutSection}>
-        <Button title="Logout" onPress={handleLogout} variant="secondary" size="large" style={styles.logoutBtn} textStyle={{ color: colors.error }} />
+
+      {/* App settings */}
+      <Text style={styles.sectionLabel}>APP</Text>
+      <View style={styles.settingsCard}>
+        <SettingRow label="Notifications" onPress={() => navigation.navigate('Notifications')} />
+        <View style={styles.divider} />
+        <SettingRow label="Help & Support" onPress={() => navigation.navigate('HelpSupport')} />
+        <View style={styles.divider} />
+        <SettingRow label="About" value="v1.0.0" />
       </View>
+
+      {/* Account / Danger */}
+      <Text style={styles.sectionLabel}>ACCOUNT</Text>
+      <View style={styles.settingsCard}>
+        <SettingRow label="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
+        <View style={styles.divider} />
+        <SettingRow
+          label="Delete Account"
+          danger
+          onPress={() => Alert.alert('Delete Account', 'NOT SUPPORTED YET: Requires backend API integration.', [{ text: 'OK' }])}
+        />
+      </View>
+
+      <Button
+        title="Sign Out"
+        onPress={handleLogout}
+        variant="danger"
+        style={styles.logoutBtn}
+      />
+
       <View style={{ height: 120 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.neutral[50] },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 50, paddingBottom: spacing.md, backgroundColor: '#ffffff' },
-  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  editBtn: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  profileSection: { alignItems: 'center', paddingVertical: spacing.lg, backgroundColor: '#ffffff', borderBottomWidth: 1, borderBottomColor: colors.neutral[100] },
-  avatar: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primary[600], alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
-  avatarText: { fontSize: 32, fontWeight: fontWeight.bold, color: '#ffffff' },
-  name: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  memberId: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold, marginTop: spacing.xs },
-  since: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: spacing.xs },
-  statusCard: { marginHorizontal: spacing.lg, marginTop: spacing.md },
-  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  statusLabel: { fontSize: fontSize.sm, color: colors.text.secondary, marginBottom: spacing.xs },
-  statusValue: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  screen: { flex: 1, backgroundColor: colors.canvas },
+  navBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: H,
+    paddingTop: 56,
+    paddingBottom: spacing['2'],
+  },
+  navTitle: { fontSize: 30, fontWeight: fontWeight.semibold, color: colors.text.primary, letterSpacing: -0.3 },
+  editLink: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.medium },
+
+  profileHeader: {
+    alignItems: 'center',
+    paddingVertical: spacing['6'],
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.accent.default,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing['4'],
+  },
+  avatarText: { fontSize: 26, fontWeight: fontWeight.semibold, color: '#FFFFFF' },
+  name: { fontSize: 22, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  memberId: { fontSize: 13, color: colors.text.tertiary, marginTop: spacing['1'], letterSpacing: 0.5 },
+  since: { fontSize: 12, color: colors.text.tertiary, marginTop: spacing['1'] },
+
+  statusCard: {
+    marginHorizontal: H,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing['5'],
+    ...shadows.card,
+    marginBottom: spacing['6'],
+  },
+  statusTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  statusEyebrow: { fontSize: 10, fontWeight: fontWeight.medium, color: colors.text.tertiary, letterSpacing: 10 * 0.1, marginBottom: spacing['1'] },
+  statusValue: { fontSize: 17, fontWeight: fontWeight.semibold },
   activeText: { color: colors.success },
   expiredText: { color: colors.error },
-  dot: { width: 12, height: 12, borderRadius: 6, marginTop: spacing.xs },
+  statusDot: { width: 10, height: 10, borderRadius: 5, marginTop: spacing['1'] },
   activeDot: { backgroundColor: colors.success },
-  warningDot: { backgroundColor: '#F59E0B' },
+  warningDot: { backgroundColor: colors.warning },
   expiredDot: { backgroundColor: colors.error },
-  expiry: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: spacing.sm },
-  section: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
-  sectionTitle: { fontSize: fontSize.sm, fontWeight: fontWeight.bold, color: colors.text.secondary, marginBottom: spacing.sm, letterSpacing: 0.5 },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing.md - 2, borderBottomWidth: 1, borderBottomColor: colors.neutral[50] },
-  rowLabel: { fontSize: fontSize.md, color: colors.text.primary },
-  rowRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  rowValue: { fontSize: fontSize.md, color: colors.text.secondary },
-  chevron: { fontSize: 20, color: colors.neutral[400] },
-  dangerText: { fontSize: fontSize.md, color: colors.error, fontWeight: fontWeight.medium },
-  logoutSection: { paddingHorizontal: spacing.lg, marginTop: spacing.xl },
-  logoutBtn: { borderColor: colors.error, borderRadius: borderRadius.lg },
+  validUntil: { fontSize: 13, color: colors.text.tertiary, marginTop: spacing['2'] },
+  renewBtn: { marginTop: spacing['4'], alignSelf: 'flex-start', height: 40, paddingHorizontal: spacing['5'] },
+
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.text.tertiary,
+    letterSpacing: 11 * 0.08,
+    paddingHorizontal: H,
+    marginBottom: spacing['2'],
+  },
+  settingsCard: {
+    marginHorizontal: H,
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    paddingHorizontal: spacing['5'],
+    marginBottom: spacing['6'],
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    height: 52,
+  },
+  rowLabel: { fontSize: 15, color: colors.text.primary },
+  rowLabelDanger: { color: colors.error },
+  rowRight: { flexDirection: 'row', alignItems: 'center', gap: spacing['2'] },
+  rowValue: { fontSize: 14, color: colors.text.tertiary },
+  chevron: { fontSize: 18, color: colors.text.tertiary },
+  divider: { height: 1, backgroundColor: colors.border.subtle },
+
+  logoutBtn: {
+    marginHorizontal: H,
+    marginTop: spacing['2'],
+  },
 });

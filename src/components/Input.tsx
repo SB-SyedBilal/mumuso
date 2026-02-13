@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, TextInputProps, ViewStyle } from 'react-native';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight } from '../constants/dimensions';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -23,14 +23,22 @@ export default function Input({
   return (
     <View style={[styles.container, containerStyle]}>
       {label && (
-        <Text style={styles.label}>
-          {label} {required && <Text style={styles.required}>*</Text>}
+        <Text style={[
+          styles.label,
+          isFocused && styles.labelFocused,
+          error ? styles.labelError : null,
+        ]}>
+          {label.toUpperCase()}
         </Text>
       )}
-      <View style={[styles.inputWrapper, isFocused && styles.focused, error ? styles.errorBorder : null]}>
+      <View style={[
+        styles.inputWrapper,
+        isFocused && styles.focused,
+        error ? styles.errorBorder : null,
+      ]}>
         <TextInput
           style={styles.input}
-          placeholderTextColor={colors.neutral[400]}
+          placeholderTextColor={colors.text.tertiary}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           secureTextEntry={secureTextEntry && !showPassword}
@@ -50,19 +58,54 @@ export default function Input({
 }
 
 const styles = StyleSheet.create({
-  container: { marginBottom: spacing.md },
-  label: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, color: colors.text.primary, marginBottom: spacing.xs + 2 },
-  required: { color: colors.error },
-  inputWrapper: {
-    flexDirection: 'row', alignItems: 'center',
-    borderWidth: 1, borderColor: colors.neutral[200], borderRadius: borderRadius.md,
-    backgroundColor: '#ffffff',
+  container: { marginBottom: spacing['4'] },
+  label: {
+    fontSize: 11,
+    fontWeight: fontWeight.medium,
+    color: colors.text.tertiary,
+    letterSpacing: 11 * 0.08,
+    marginBottom: spacing['2'],
   },
-  focused: { borderColor: colors.primary[600], borderWidth: 2 },
-  errorBorder: { borderColor: colors.error, borderWidth: 2 },
-  input: { flex: 1, paddingVertical: spacing.md - 4, paddingHorizontal: spacing.md, fontSize: fontSize.md, color: colors.text.primary },
-  toggle: { paddingHorizontal: spacing.md },
-  toggleText: { fontSize: fontSize.sm, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  error: { fontSize: fontSize.xs, color: colors.error, marginTop: spacing.xs },
-  hint: { fontSize: fontSize.xs, color: colors.text.secondary, marginTop: spacing.xs },
+  labelFocused: { color: colors.text.primary },
+  labelError: { color: colors.error },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 56,
+    borderWidth: 1.5,
+    borderColor: colors.border.subtle,
+    borderRadius: 14,
+    backgroundColor: colors.surface,
+  },
+  focused: {
+    borderColor: colors.text.primary,
+    borderWidth: 1.5,
+  },
+  errorBorder: {
+    borderColor: colors.error,
+    borderWidth: 1.5,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: spacing['5'],
+    fontSize: 16,
+    color: colors.text.primary,
+    fontWeight: fontWeight.regular,
+  },
+  toggle: { paddingHorizontal: spacing['5'] },
+  toggleText: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    fontWeight: fontWeight.medium,
+  },
+  error: {
+    fontSize: 12,
+    color: colors.error,
+    marginTop: spacing['1'],
+  },
+  hint: {
+    fontSize: 12,
+    color: colors.text.secondary,
+    marginTop: spacing['1'],
+  },
 });

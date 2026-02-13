@@ -1,41 +1,19 @@
 /**
- * Global theme configuration for Mumuso app
+ * Mumuso V3 — Global Theme
+ * "Quiet Luxury" design system
  */
 
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, typeScale, fontWeight, shadows, motion } from '../constants/dimensions';
 
 export const theme = {
     colors,
     spacing,
-    borderRadius,
-    fontSize,
+    radius,
+    typeScale,
     fontWeight,
-
-    // Shadows
-    shadows: {
-        sm: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 1 },
-            shadowOpacity: 0.05,
-            shadowRadius: 2,
-            elevation: 2,
-        },
-        md: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-            elevation: 4,
-        },
-        lg: {
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 8,
-            elevation: 8,
-        },
-    },
+    shadows,
+    motion,
 };
 
 export type Theme = typeof theme;

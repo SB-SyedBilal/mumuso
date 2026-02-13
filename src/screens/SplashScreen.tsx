@@ -1,32 +1,83 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { colors } from '../constants/colors';
-import { fontSize, fontWeight } from '../constants/dimensions';
+import { fontWeight } from '../constants/dimensions';
 
 interface SplashScreenProps {
   onFinish: () => void;
 }
 
 export default function SplashScreen({ onFinish }: SplashScreenProps) {
+  const wordmarkOpacity = useRef(new Animated.Value(0)).current;
+  const lineWidth = useRef(new Animated.Value(0)).current;
+  const memberOpacity = useRef(new Animated.Value(0)).current;
+  const allOpacity = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
-    const timer = setTimeout(() => onFinish(), 2500);
-    return () => clearTimeout(timer);
+    // t=0→100: wordmark fades in 700ms
+    // t=600: gold line draws from center out 400ms
+    // t=900: MEMBER fades in 400ms
+    // t=1800: all fades → transition
+    Animated.sequence([
+      Animated.delay(100),
+      Animated.timing(wordmarkOpacity, { toValue: 1, duration: 700, useNativeDriver: false }),
+      Animated.delay(0),
+      Animated.timing(lineWidth, { toValue: 36, duration: 400, useNativeDriver: false }),
+      Animated.delay(100),
+      Animated.timing(memberOpacity, { toValue: 1, duration: 400, useNativeDriver: false }),
+      Animated.delay(500),
+      Animated.timing(allOpacity, { toValue: 0, duration: 400, useNativeDriver: false }),
+    ]).start(() => onFinish());
   }, [onFinish]);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.brand}>MUMUSO</Text>
-      <Text style={styles.tagline}>Love Life, Love Mumuso</Text>
-      <ActivityIndicator color={colors.primary[600]} size="large" style={styles.loader} />
+      <Animated.View style={[styles.center, { opacity: allOpacity }]}>
+        <Animated.Text style={[styles.wordmark, { opacity: wordmarkOpacity }]}>
+          MUMUSO
+        </Animated.Text>
+        <Animated.View style={[styles.goldLine, { width: lineWidth }]} />
+        <Animated.Text style={[styles.memberLabel, { opacity: memberOpacity }]}>
+          MEMBER
+        </Animated.Text>
+      </Animated.View>
       <Text style={styles.version}>v1.0.0</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#ffffff', alignItems: 'center', justifyContent: 'center' },
-  brand: { fontSize: 42, fontWeight: fontWeight.bold, color: colors.primary[600], letterSpacing: 6 },
-  tagline: { fontSize: fontSize.md, color: colors.text.secondary, marginTop: 8 },
-  loader: { marginTop: 40 },
-  version: { position: 'absolute', bottom: 40, fontSize: fontSize.sm, color: colors.neutral[400] },
+  container: {
+    flex: 1,
+    backgroundColor: colors.surfaceDarker,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  center: {
+    alignItems: 'center',
+  },
+  wordmark: {
+    fontSize: 38,
+    fontWeight: fontWeight.bold,
+    color: colors.text.inverted,
+    letterSpacing: 38 * 0.18,
+  },
+  goldLine: {
+    height: 1,
+    backgroundColor: colors.accent.default,
+    marginTop: 16,
+    marginBottom: 12,
+  },
+  memberLabel: {
+    fontSize: 10,
+    fontWeight: fontWeight.medium,
+    color: colors.text.invertedMuted,
+    letterSpacing: 10 * 0.22,
+  },
+  version: {
+    position: 'absolute',
+    bottom: 40,
+    fontSize: 12,
+    color: '#4A4A4E',
+  },
 });

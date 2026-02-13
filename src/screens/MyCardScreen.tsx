@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
-import { spacing, borderRadius, fontSize, fontWeight } from '../constants/dimensions';
+import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 import { formatDate, getDaysRemaining } from '../utils';
-import Card from '../components/Card';
 import Button from '../components/Button';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -22,81 +21,122 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
   const daysRemaining = membership ? getDaysRemaining(membership.expiry_date) : 0;
   const isExpired = membership?.status !== 'active' || daysRemaining <= 0;
 
-  // NOTE: QR code rendering uses react-native-qrcode-svg.
-  // If the library fails to load, we show a text-based fallback.
   let QRCode: any = null;
   try { QRCode = require('react-native-qrcode-svg').default; } catch (e) { /* fallback */ }
 
   const renderQR = (size: number) => {
     if (isExpired) {
       return (
-        <View style={[styles.qrPlaceholder, { width: size, height: size }]}>
-          <Text style={styles.expiredOverlay}>EXPIRED</Text>
+        <View style={[styles.qrContainer, { width: size, height: size }]}>
+          <Text style={styles.expiredStamp}>EXPIRED</Text>
         </View>
       );
     }
     if (QRCode && membership?.qr_code_data) {
-      return <QRCode value={membership.qr_code_data} size={size} backgroundColor="transparent" />;
+      return (
+        <View style={[styles.qrContainer, { width: size, height: size }]}>
+          <QRCode value={membership.qr_code_data} size={size - 32} backgroundColor="#FFFFFF" />
+        </View>
+      );
     }
     return (
-      <View style={[styles.qrPlaceholder, { width: size, height: size }]}>
-        <Text style={styles.qrFallbackText}>{membership?.member_id || 'MUM-XXXXX'}</Text>
+      <View style={[styles.qrContainer, { width: size, height: size }]}>
+        <Text style={styles.qrFallbackId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
         <Text style={styles.qrFallbackSub}>QR Code</Text>
       </View>
     );
   };
 
+  const handleCardTap = () => {
+    if (showBack) {
+      setShowBack(false);
+    } else {
+      setShowBack(true);
+    }
+  };
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Card</Text>
-        <TouchableOpacity onPress={() => setShowBack(!showBack)}>
-          <Text style={styles.flipText}>{showBack ? 'Show Front' : 'Show Back'}</Text>
+    <View style={styles.screen}>
+      {/* Nav */}
+      <View style={styles.navBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backIcon}>{'\u2039'}</Text>
+        </TouchableOpacity>
+        <Text style={styles.navTitle}>My Card</Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      {/* Card */}
+      <View style={styles.cardArea}>
+        {!showBack ? (
+          // FRONT
+          <TouchableOpacity style={styles.card} onPress={handleCardTap} activeOpacity={0.95}>
+            <View style={styles.cardTopRow}>
+              <Text style={styles.cardLabel}>MUMUSO MEMBER</Text>
+              <View style={[styles.statusBadge, isExpired ? styles.statusExpired : styles.statusActive]}>
+                {!isExpired && <View style={styles.statusDot} />}
+                <Text style={[styles.statusText, isExpired ? styles.statusExpiredText : styles.statusActiveText]}>
+                  {isExpired ? 'EXPIRED' : 'ACTIVE'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.cardName}>{user?.full_name || 'Member'}</Text>
+            <View style={styles.cardBottomRow}>
+              <Text style={styles.cardId}>{membership?.member_id?.replace('-', ' \u00B7 ') || 'MUM \u00B7 XXXXX'}</Text>
+              <View style={styles.cardValidCol}>
+                <Text style={styles.cardValidLabel}>VALID UNTIL</Text>
+                <Text style={styles.cardValidDate}>{membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
+              </View>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          // BACK — QR
+          <TouchableOpacity style={styles.card} onPress={handleCardTap} activeOpacity={0.95}>
+            <View style={styles.qrBackCenter}>
+              {renderQR(160)}
+              <Text style={styles.qrMemberId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
+              <Text style={styles.showToCashier}>SHOW TO CASHIER</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {showBack && !isExpired && (
+        <Text style={styles.holdSteady}>Hold steady \u00B7 Cashier will scan</Text>
+      )}
+
+      {/* Ghost buttons */}
+      <View style={styles.actionsRow}>
+        {/* NOT SUPPORTED YET: Save Photo requires react-native-view-shot + media library permissions */}
+        <TouchableOpacity style={styles.ghostButton} activeOpacity={0.7}>
+          <Text style={styles.ghostButtonText}>Save Photo</Text>
+        </TouchableOpacity>
+        {/* NOT SUPPORTED YET: Add to Wallet requires Apple/Google Wallet SDK */}
+        <TouchableOpacity style={styles.ghostButton} activeOpacity={0.7}>
+          <Text style={styles.ghostButtonText}>Add to Wallet</Text>
+        </TouchableOpacity>
+        {/* NOT SUPPORTED YET: Share requires react-native-share */}
+        <TouchableOpacity style={styles.ghostButton} activeOpacity={0.7}>
+          <Text style={styles.ghostButtonText}>Share</Text>
         </TouchableOpacity>
       </View>
 
-      {!showBack ? (
-        <View style={styles.cardFront}>
-          <Text style={styles.cardBrand}>MUMUSO</Text>
-          <TouchableOpacity onPress={() => !isExpired && setShowQRModal(true)} style={styles.qrContainer}>
-            {renderQR(180)}
-            {!isExpired && <Text style={styles.tapHint}>Tap to enlarge</Text>}
-          </TouchableOpacity>
-          <Text style={styles.cardName}>{user?.full_name || 'Member'}</Text>
-          <Text style={styles.cardId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
-          <View style={styles.cardFooter}>
-            <View style={[styles.statusBadge, isExpired ? styles.expiredBadge : styles.activeBadge]}>
-              <Text style={[styles.statusText, isExpired ? styles.expiredText : styles.activeText]}>
-                {isExpired ? 'EXPIRED' : 'ACTIVE'}
-              </Text>
-            </View>
-            <Text style={styles.validText}>Valid until {membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.cardBack}>
-          <Text style={styles.cardBrand}>MUMUSO</Text>
-          <Text style={styles.backTitle}>Member Benefits</Text>
-          {['10% discount on all purchases', 'Valid at all Mumuso stores', 'Digital receipt tracking', 'Member-only promotions'].map((b, i) => (
-            <Text key={i} style={styles.backBenefit}>{'\u2022'} {b}</Text>
-          ))}
-          <View style={styles.backContact}>
-            <Text style={styles.backContactTitle}>Customer Support</Text>
-            <Text style={styles.backContactText}>111-MUMUSO (686876)</Text>
-            <Text style={styles.backContactText}>support@mumuso.com.pk</Text>
-          </View>
-        </View>
-      )}
-
       {isExpired && (
-        <Button title="Renew Membership" onPress={() => navigation.navigate('RenewalScreen')} variant="primary" size="large" style={styles.renewButton} />
+        <Button
+          title="Renew Membership"
+          onPress={() => navigation.navigate('RenewalScreen')}
+          variant="gold"
+          style={styles.renewButton}
+        />
       )}
 
-      <TouchableOpacity style={styles.helpLink} onPress={() => navigation.navigate('QRHelp')}>
-        <Text style={styles.helpText}>QR code not scanning? Get help</Text>
-      </TouchableOpacity>
+      <View style={styles.bottomArea}>
+        <TouchableOpacity onPress={() => navigation.navigate('QRHelp')}>
+          <Text style={styles.helpText}>QR not scanning? Get help</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* QR Modal */}
+      {/* Full-screen QR Modal */}
       <Modal visible={showQRModal} transparent animationType="fade">
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowQRModal(false)}>
           <View style={styles.modalContent}>
@@ -106,46 +146,136 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
           </View>
         </TouchableOpacity>
       </Modal>
-
-      <View style={{ height: 100 }} />
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.neutral[50] },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, paddingTop: 50, paddingBottom: spacing.md, backgroundColor: '#ffffff' },
-  headerTitle: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  flipText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  cardFront: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.xl, borderRadius: borderRadius.lg + 4, backgroundColor: '#ffffff', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8 },
-  cardBack: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.xl, borderRadius: borderRadius.lg + 4, backgroundColor: colors.primary[600], shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 8 },
-  cardBrand: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, letterSpacing: 4, color: colors.primary[600], marginBottom: spacing.lg },
-  qrContainer: { alignItems: 'center', marginBottom: spacing.lg },
-  qrPlaceholder: { backgroundColor: colors.neutral[100], borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center' },
-  expiredOverlay: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, color: colors.error, transform: [{ rotate: '-15deg' }] },
-  qrFallbackText: { fontSize: fontSize.lg, fontWeight: fontWeight.bold, color: colors.text.primary },
-  qrFallbackSub: { fontSize: fontSize.sm, color: colors.text.secondary },
-  tapHint: { fontSize: fontSize.xs, color: colors.text.secondary, marginTop: spacing.xs },
-  cardName: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.text.primary },
-  cardId: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold, marginTop: spacing.xs, letterSpacing: 2 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width: '100%', marginTop: spacing.lg },
-  statusBadge: { paddingVertical: spacing.xs, paddingHorizontal: spacing.md, borderRadius: borderRadius.full },
-  activeBadge: { backgroundColor: '#D1FAE5' },
-  expiredBadge: { backgroundColor: '#FEE2E2' },
-  statusText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
-  activeText: { color: '#065F46' },
-  expiredText: { color: '#991B1B' },
-  validText: { fontSize: fontSize.sm, color: colors.text.secondary },
-  backTitle: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: '#ffffff', marginBottom: spacing.md },
-  backBenefit: { fontSize: fontSize.md, color: colors.primary[100], marginBottom: spacing.sm, lineHeight: 22 },
-  backContact: { marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: colors.primary[500] },
-  backContactTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold, color: '#ffffff', marginBottom: spacing.sm },
-  backContactText: { fontSize: fontSize.sm, color: colors.primary[200], marginBottom: 2 },
-  renewButton: { marginHorizontal: spacing.lg, marginTop: spacing.lg, borderRadius: borderRadius.lg },
-  helpLink: { alignItems: 'center', marginTop: spacing.lg },
-  helpText: { fontSize: fontSize.md, color: colors.primary[600], fontWeight: fontWeight.semibold },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' },
-  modalContent: { backgroundColor: '#ffffff', borderRadius: borderRadius.lg + 4, padding: spacing.xl, alignItems: 'center' },
-  modalId: { fontSize: fontSize.xl, fontWeight: fontWeight.bold, color: colors.primary[600], marginTop: spacing.md, letterSpacing: 2 },
-  modalHint: { fontSize: fontSize.sm, color: colors.text.secondary, marginTop: spacing.sm },
+  screen: { flex: 1, backgroundColor: '#0F0F0F' },
+
+  navBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing['6'],
+    paddingTop: 56,
+    paddingBottom: spacing['4'],
+  },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  backIcon: { fontSize: 28, color: colors.text.inverted },
+  navTitle: { fontSize: 17, fontWeight: fontWeight.semibold, color: colors.text.inverted },
+
+  cardArea: {
+    alignItems: 'center',
+    paddingHorizontal: spacing['6'],
+    marginTop: spacing['4'],
+  },
+  card: {
+    width: SCREEN_WIDTH - 48,
+    height: 208,
+    borderRadius: radius['2xl'],
+    backgroundColor: colors.surfaceDark,
+    padding: spacing['6'],
+    justifyContent: 'space-between',
+    ...shadows.membership,
+    borderWidth: 1,
+    borderColor: '#3A3A3E',
+  },
+  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardLabel: {
+    fontSize: 10,
+    fontWeight: fontWeight.medium,
+    color: colors.text.invertedMuted,
+    letterSpacing: 10 * 0.14,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  statusActive: { backgroundColor: 'rgba(74,155,127,0.12)' },
+  statusExpired: { backgroundColor: 'rgba(192,84,74,0.10)' },
+  statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success, marginRight: 6 },
+  statusText: { fontSize: 11, fontWeight: fontWeight.semibold },
+  statusActiveText: { color: colors.success },
+  statusExpiredText: { color: colors.error },
+  cardName: { fontSize: 26, fontWeight: fontWeight.semibold, color: colors.text.inverted },
+  cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  cardId: { fontSize: 12, color: '#6B6361', letterSpacing: 0.5 },
+  cardValidCol: { alignItems: 'flex-end' },
+  cardValidLabel: { fontSize: 10, color: colors.text.invertedMuted, letterSpacing: 10 * 0.06 },
+  cardValidDate: { fontSize: 14, color: colors.text.invertedMuted, marginTop: 2 },
+
+  // QR back
+  qrBackCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  qrContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: radius.lg,
+    padding: spacing['4'],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  expiredStamp: {
+    fontSize: 28,
+    fontWeight: fontWeight.bold,
+    color: colors.error,
+    transform: [{ rotate: '-15deg' }],
+    opacity: 0.85,
+  },
+  qrFallbackId: { fontSize: 16, fontWeight: fontWeight.bold, color: colors.text.primary },
+  qrFallbackSub: { fontSize: 12, color: colors.text.secondary, marginTop: 4 },
+  qrMemberId: { fontSize: 14, color: colors.text.invertedMuted, marginTop: spacing['3'], letterSpacing: 0.5 },
+  showToCashier: {
+    fontSize: 10,
+    fontWeight: fontWeight.medium,
+    color: colors.accent.default,
+    letterSpacing: 10 * 0.14,
+    marginTop: spacing['2'],
+  },
+  holdSteady: {
+    fontSize: 13,
+    color: colors.text.invertedMuted,
+    textAlign: 'center',
+    marginTop: spacing['4'],
+  },
+
+  // Actions
+  actionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing['3'],
+    paddingHorizontal: spacing['6'],
+    marginTop: spacing['12'],
+  },
+  ghostButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: '#3A3A3E',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ghostButtonText: { fontSize: 13, fontWeight: fontWeight.medium, color: colors.text.inverted },
+
+  renewButton: {
+    marginHorizontal: spacing['6'],
+    marginTop: spacing['6'],
+  },
+
+  bottomArea: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: spacing['10'],
+  },
+  helpText: { fontSize: 12, color: '#6B6361', textAlign: 'center' },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center' },
+  modalContent: { backgroundColor: '#FFFFFF', borderRadius: radius.lg, padding: spacing['6'], alignItems: 'center' },
+  modalId: { fontSize: 18, fontWeight: fontWeight.bold, color: colors.text.primary, marginTop: spacing['4'], letterSpacing: 1 },
+  modalHint: { fontSize: 13, color: colors.text.secondary, marginTop: spacing['2'] },
 });
