@@ -16,7 +16,8 @@ interface OTPVerificationScreenProps {
 export default function OTPVerificationScreen({ navigation }: OTPVerificationScreenProps) {
   const route = useRoute<RouteProp<RootStackParamList, 'OTPVerification'>>();
   const { verifyOTP } = useAuth();
-  const { phone_number } = route.params;
+  const { phone_number, user_id } = route.params;
+  const otpType = route.params.from === 'register' ? 'registration' : 'password_reset' as const;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(59);
@@ -64,7 +65,7 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
     const otpCode = code || otp.join('');
     if (otpCode.length !== 6) return;
     setLoading(true);
-    const result = await verifyOTP(otpCode);
+    const result = await verifyOTP(otpCode, user_id || '', otpType);
     setLoading(false);
     if (!result.success) {
       const newAttempts = attempts + 1;

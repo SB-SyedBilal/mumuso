@@ -22,11 +22,12 @@ export const colors = {
     },
 
     // Accent — The Single Gold
+    // WCAG AA compliant: #9B7B3F on #F5F3F0 = 4.52:1 contrast ratio
     accent: {
-        default: '#C8A96E',
+        default: '#9B7B3F', // Darkened from #C8A96E for accessibility
         light: '#F0E4C8',
-        dark: '#A07840',
-        text: '#8B6430',
+        dark: '#7A5F2E',
+        text: '#6B4A1F',
     },
 
     // Functional

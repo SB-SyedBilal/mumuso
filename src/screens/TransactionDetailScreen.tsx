@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, TransactionDetail } from '../types';
 import { formatCurrency, formatDateTime } from '../utils';
-import { MOCK_TRANSACTIONS } from '../services/mockData';
+import { api } from '../services/apiClient';
 import Button from '../components/Button';
 
 const H = 24;
@@ -15,7 +15,19 @@ interface TransactionDetailScreenProps { navigation: NativeStackNavigationProp<R
 
 export default function TransactionDetailScreen({ navigation }: TransactionDetailScreenProps) {
   const route = useRoute<RouteProp<RootStackParamList, 'TransactionDetail'>>();
-  const txn = MOCK_TRANSACTIONS.find(t => t.id === route.params.transaction_id);
+  const [txn, setTxn] = useState<TransactionDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const res = await api.get<TransactionDetail>(`/member/transactions/${route.params.transaction_id}`);
+      if (res.success && res.data) setTxn(res.data);
+      setLoading(false);
+    };
+    load();
+  }, [route.params.transaction_id]);
+
+  if (loading) return <View style={styles.screen}><ActivityIndicator size="large" color={colors.accent.default} style={{ marginTop: 100 }} /></View>;
   if (!txn) return <View style={styles.screen}><Text style={styles.errorText}>Transaction not found</Text></View>;
 
   return (
@@ -37,49 +49,21 @@ export default function TransactionDetailScreen({ navigation }: TransactionDetai
           <Text style={styles.txnId}>{txn.id.toUpperCase()}</Text>
         </View>
 
-        {/* Items */}
-        <View style={styles.card}>
-          <View style={styles.itemHeader}>
-            <Text style={[styles.itemHeaderText, { flex: 2 }]}>ITEM</Text>
-            <Text style={styles.itemHeaderText}>QTY</Text>
-            <Text style={[styles.itemHeaderText, { textAlign: 'right' }]}>TOTAL</Text>
-          </View>
-          {txn.items.map((item, i) => (
-            <View key={i}>
-              <View style={styles.itemRow}>
-                <Text style={[styles.itemName, { flex: 2 }]} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.itemQty}>{item.quantity}</Text>
-                <Text style={styles.itemTotal}>{formatCurrency(item.total_price)}</Text>
-              </View>
-              {i < txn.items.length - 1 && <View style={styles.divider} />}
-            </View>
-          ))}
-        </View>
-
         {/* Calculation */}
         <View style={styles.card}>
           <View style={styles.calcRow}>
-            <Text style={styles.calcLabel}>Subtotal</Text>
-            <Text style={styles.calcValue}>{formatCurrency(txn.subtotal)}</Text>
+            <Text style={styles.calcLabel}>Original Amount</Text>
+            <Text style={styles.calcValue}>{formatCurrency(txn.original_amount)}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.calcRow}>
-            <Text style={styles.calcLabelGold}>Discount ({txn.discount_percentage}%)</Text>
+            <Text style={styles.calcLabelGold}>Discount ({txn.discount_pct}%)</Text>
             <Text style={styles.calcValueGold}>{'\u2013'}{formatCurrency(txn.discount_amount)}</Text>
           </View>
-          {txn.tax > 0 && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.calcRow}>
-                <Text style={styles.calcLabel}>Tax</Text>
-                <Text style={styles.calcValue}>{formatCurrency(txn.tax)}</Text>
-              </View>
-            </>
-          )}
           <View style={styles.totalDivider} />
           <View style={styles.calcRow}>
             <Text style={styles.totalLabel}>Total Paid</Text>
-            <Text style={styles.totalValue}>{formatCurrency(txn.total)}</Text>
+            <Text style={styles.totalValue}>{formatCurrency(txn.final_amount)}</Text>
           </View>
         </View>
 
@@ -93,13 +77,18 @@ export default function TransactionDetailScreen({ navigation }: TransactionDetai
         {/* Meta */}
         <View style={styles.card}>
           <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Payment</Text>
-            <Text style={styles.metaValue}>{txn.payment_method}</Text>
+            <Text style={styles.metaLabel}>Store</Text>
+            <Text style={styles.metaValue}>{txn.store_name}, {txn.store_city}</Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Member ID</Text>
             <Text style={styles.metaValue}>{txn.member_id}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Discount Type</Text>
+            <Text style={styles.metaValue}>{txn.discount_type}</Text>
           </View>
         </View>
 

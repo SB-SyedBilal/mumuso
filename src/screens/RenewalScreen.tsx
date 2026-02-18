@@ -5,8 +5,7 @@ import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
-import { formatCurrency, formatDate, getDaysRemaining } from '../utils';
-import { MEMBERSHIP_FEE } from '../services/mockData';
+import { formatCurrency, formatDate } from '../utils';
 import Button from '../components/Button';
 
 const H = 24;
@@ -14,9 +13,9 @@ const H = 24;
 interface Props { navigation: NativeStackNavigationProp<RootStackParamList, 'RenewalScreen'>; }
 
 export default function RenewalScreen({ navigation }: Props) {
-  const { membership } = useAuth();
-  const daysRemaining = membership ? getDaysRemaining(membership.expiry_date) : 0;
-  const isExpired = membership?.status !== 'active' || daysRemaining <= 0;
+  const { dashboard } = useAuth();
+  const daysRemaining = dashboard?.days_remaining || 0;
+  const isExpired = dashboard?.status !== 'active' || daysRemaining <= 0;
 
   return (
     <View style={styles.screen}>
@@ -33,7 +32,7 @@ export default function RenewalScreen({ navigation }: Props) {
 
         <Text style={styles.headline}>{isExpired ? 'Membership expired' : 'Expiring soon'}</Text>
         {isExpired ? (
-          <Text style={styles.subheadline}>Expired on {membership ? formatDate(membership.expiry_date) : 'N/A'}. Renew to continue saving 10%.</Text>
+          <Text style={styles.subheadline}>Expired on {dashboard?.expiry_date ? formatDate(dashboard.expiry_date) : 'N/A'}. Renew to continue saving 10%.</Text>
         ) : (
           <>
             <Text style={styles.countdown}>{daysRemaining} days</Text>
@@ -52,14 +51,14 @@ export default function RenewalScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {membership && membership.total_savings > 0 && (
+        {dashboard && dashboard.total_saved > 0 && (
           <View style={styles.savingsCard}>
             <Text style={styles.savingsEyebrow}>SAVED THIS YEAR</Text>
-            <Text style={styles.savingsAmount}>{formatCurrency(membership.total_savings)}</Text>
+            <Text style={styles.savingsAmount}>{formatCurrency(dashboard.total_saved)}</Text>
           </View>
         )}
 
-        <Button title={`Renew \u2014 ${formatCurrency(MEMBERSHIP_FEE)}`} onPress={() => navigation.navigate('MembershipPurchase')} variant="gold" style={styles.renewBtn} />
+        <Button title="Renew Membership" onPress={() => navigation.navigate('MembershipPurchase')} variant="gold" style={styles.renewBtn} />
         {!isExpired && <Button title="Remind me later" onPress={() => navigation.goBack()} variant="text" />}
 
         <View style={{ height: 40 }} />

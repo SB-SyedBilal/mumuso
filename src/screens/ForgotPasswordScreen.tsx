@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
+import { useAuth } from '../services/AuthContext';
 import Button from '../components/Button';
 import Input from '../components/Input';
 
@@ -12,17 +13,23 @@ interface ForgotPasswordScreenProps {
 }
 
 export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScreenProps) {
+  const { forgotPassword } = useAuth();
   const [identifier, setIdentifier] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSend = async () => {
-    if (!identifier) { Alert.alert('Required', 'Please enter your phone number or email'); return; }
+    if (!identifier) { Alert.alert('Required', 'Please enter your email'); return; }
     setLoading(true);
-    // NOT SUPPORTED YET: Real password reset via backend API.
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    setError('');
+    const result = await forgotPassword(identifier);
     setLoading(false);
-    setSent(true);
+    if (result.success) {
+      setSent(true);
+    } else {
+      setError(result.error || 'Failed to send reset link');
+    }
   };
 
   if (sent) {

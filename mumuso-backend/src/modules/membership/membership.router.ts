@@ -1,0 +1,31 @@
+// Membership routes — Ref: Primary Spec Section 9
+// Base path: /api/v1/membership
+
+import { Router } from 'express';
+import { authenticate } from '../../middleware/auth.middleware';
+import { requireRole } from '../../middleware/role.middleware';
+import { validate } from '../../middleware/validate.middleware';
+import { createOrderLimiter } from '../../middleware/rateLimiter';
+import { createOrderSchema } from './membership.schema';
+import * as membershipController from './membership.controller';
+
+const router = Router();
+
+// GET /membership/plans — Authenticated, customer role
+router.get('/plans', authenticate, requireRole('customer'), membershipController.listPlans);
+
+// POST /membership/create-order — Authenticated, customer role — 3 per user per hour
+router.post(
+  '/create-order',
+  authenticate,
+  requireRole('customer'),
+  createOrderLimiter,
+  validate({ body: createOrderSchema }),
+  membershipController.createOrder,
+);
+
+// POST /membership/webhook/safepay — Public (verified by signature)
+// No auth middleware — Safepay calls this directly
+router.post('/webhook/safepay', membershipController.webhookSafepay);
+
+export default router;

@@ -9,7 +9,7 @@ import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 import { validatePhoneNumber, validateEmail, validatePassword, getPasswordStrength } from '../utils';
-import { PAKISTANI_CITIES } from '../services/mockData';
+import { PAKISTANI_CITIES } from '../types';
 import Button from '../components/Button';
 import Input from '../components/Input';
 
@@ -51,10 +51,16 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
   const handleRegister = async () => {
     if (!validate()) return;
     setLoading(true);
-    const result = await register({ full_name: fullName, phone_number: phone, email, date_of_birth: dob, gender: gender as any, city, password });
+    // Format phone to +923XXXXXXXXX for backend
+    let formattedPhone = phone.replace(/[\s-]/g, '');
+    if (formattedPhone.startsWith('03')) formattedPhone = '+92' + formattedPhone.slice(1);
+    else if (formattedPhone.startsWith('3')) formattedPhone = '+92' + formattedPhone;
+    else if (!formattedPhone.startsWith('+92')) formattedPhone = '+92' + formattedPhone;
+
+    const result = await register({ full_name: fullName, email, phone: formattedPhone, password, confirm_password: confirmPassword });
     setLoading(false);
     if (result.success) {
-      navigation.navigate('OTPVerification', { phone_number: phone, from: 'register' });
+      navigation.navigate('OTPVerification', { phone_number: phone, from: 'register', user_id: result.user_id });
     } else {
       setErrors({ general: result.error || 'Registration failed' });
     }

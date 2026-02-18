@@ -5,7 +5,7 @@ import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
-import { formatDate, getDaysRemaining } from '../utils';
+import { formatDate } from '../utils';
 import Button from '../components/Button';
 
 const H = 24;
@@ -13,9 +13,9 @@ const H = 24;
 interface ProfileScreenProps { navigation: NativeStackNavigationProp<RootStackParamList>; }
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
-  const { user, membership, logout, updateMembership } = useAuth();
-  const daysRemaining = membership ? getDaysRemaining(membership.expiry_date) : 0;
-  const isActive = membership?.status === 'active' && daysRemaining > 0;
+  const { user, dashboard, memberStatus, logout } = useAuth();
+  const daysRemaining = dashboard?.days_remaining || 0;
+  const isActive = dashboard?.status === 'active' && daysRemaining > 0;
   const initials = (user?.full_name || 'M').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
@@ -51,8 +51,8 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <Text style={styles.name}>{user?.full_name || 'Member'}</Text>
-        <Text style={styles.memberId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
-        <Text style={styles.since}>Member since {user ? formatDate(user.created_at) : 'N/A'}</Text>
+        <Text style={styles.memberId}>{dashboard?.member_id || 'MUM-XXXXX'}</Text>
+        <Text style={styles.since}>Member since {dashboard?.membership?.activated_at ? formatDate(dashboard.membership.activated_at) : 'N/A'}</Text>
       </View>
 
       {/* Membership status */}
@@ -66,7 +66,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
           </View>
           <View style={[styles.statusDot, isActive ? (daysRemaining <= 30 ? styles.warningDot : styles.activeDot) : styles.expiredDot]} />
         </View>
-        <Text style={styles.validUntil}>Valid until {membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
+        <Text style={styles.validUntil}>Valid until {dashboard?.expiry_date ? formatDate(dashboard.expiry_date) : 'N/A'}</Text>
         {daysRemaining <= 30 && daysRemaining > 0 && (
           <Button title="Renew" onPress={() => navigation.navigate('RenewalScreen')} variant="gold" style={styles.renewBtn} />
         )}
@@ -77,11 +77,7 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       <View style={styles.settingsCard}>
         <SettingRow label="Email" value={user?.email || 'N/A'} />
         <View style={styles.divider} />
-        <SettingRow label="Phone" value={user?.phone_number || 'N/A'} />
-        <View style={styles.divider} />
-        <SettingRow label="Date of Birth" value={user?.date_of_birth ? formatDate(user.date_of_birth) : 'N/A'} />
-        <View style={styles.divider} />
-        <SettingRow label="City" value={user?.city || 'N/A'} />
+        <SettingRow label="Phone" value={user?.phone || 'N/A'} />
       </View>
 
       {/* Membership settings */}
@@ -90,8 +86,8 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Auto-Renew</Text>
           <Switch
-            value={membership?.auto_renew || false}
-            onValueChange={(v) => updateMembership({ auto_renew: v })}
+            value={dashboard?.membership?.auto_renew || false}
+            onValueChange={() => {}}
             trackColor={{ false: colors.border.default, true: colors.accent.default }}
             thumbColor="#FFFFFF"
           />

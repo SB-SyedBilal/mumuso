@@ -55,7 +55,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         <Text style={styles.headline}>Welcome back</Text>
-        <Text style={styles.subheadline}>Sign in to access your membership</Text>
+        <Text style={styles.subheadline}>Sign in with your email and password</Text>
 
         {errors.general && (
           <View style={styles.errorBanner}>

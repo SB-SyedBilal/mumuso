@@ -15,8 +15,8 @@ interface PaymentProcessingScreenProps {
 
 export default function PaymentProcessingScreen({ navigation }: PaymentProcessingScreenProps) {
   const route = useRoute<RouteProp<RootStackParamList, 'PaymentProcessing'>>();
-  const { purchaseMembership } = useAuth();
-  const { method, amount } = route.params;
+  const { refreshDashboard } = useAuth();
+  const { method, amount, payment_id, gateway_token } = route.params;
   const [status, setStatus] = useState<'processing' | 'success' | 'failed'>('processing');
 
   useEffect(() => {
@@ -24,13 +24,17 @@ export default function PaymentProcessingScreen({ navigation }: PaymentProcessin
   }, []);
 
   const processPayment = async () => {
-    // NOT SUPPORTED YET: Real payment processing via JazzCash/EasyPaisa/Stripe/Bank APIs.
+    // NOTE: Real payment processing happens via Safepay gateway.
+    // The backend creates the order and returns a gateway_token.
+    // In production, user would be redirected to Safepay payment page.
+    // Safepay webhook notifies backend when payment completes.
+    // For now, simulate success after delay.
     setStatus('processing');
-    const result = await purchaseMembership(method);
-    setStatus(result.success ? 'success' : 'failed');
-    if (result.success) {
-      setTimeout(() => navigation.replace('MembershipSuccess'), 1500);
-    }
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    // In real flow, we'd poll backend or wait for webhook notification
+    await refreshDashboard();
+    setStatus('success');
+    setTimeout(() => navigation.replace('MembershipSuccess'), 1500);
   };
 
   return (

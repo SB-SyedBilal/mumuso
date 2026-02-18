@@ -1,75 +1,181 @@
+// ─── API Response Wrapper ───────────────────────────────────────────────────
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: { code: string; message: string; details?: { field: string; message: string }[] };
+}
+
+// ─── Auth Types ─────────────────────────────────────────────────────────────
+export interface AuthUser {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+  has_membership: boolean;
+  store_id?: string;
+  store_name?: string;
+}
+
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+}
+
+export interface LoginResponse extends AuthTokens {
+  user: AuthUser;
+}
+
+export interface RegisterResponse {
+  user_id: string;
+  message: string;
+}
+
+export interface VerifyOTPResponse extends AuthTokens {
+  user: AuthUser;
+}
+
+// ─── User (local state, enriched from profile/dashboard) ────────────────────
 export interface User {
   id: string;
   full_name: string;
-  phone_number: string;
+  phone: string;
   email: string;
-  date_of_birth: string;
-  gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
-  city: string;
-  created_at: string;
-  updated_at: string;
+  role: string;
+  has_membership: boolean;
 }
 
-export interface Membership {
+// ─── Dashboard ──────────────────────────────────────────────────────────────
+export interface DashboardData {
+  has_membership?: boolean;
+  member_id: string | null;
+  status: string | null;
+  expiry_date: string | null;
+  days_remaining: number;
+  total_saved: number;
+  total_transactions: number;
+  recent_transactions: DashboardTransaction[];
+  membership: {
+    plan_name: string;
+    activated_at: string | null;
+    renewal_eligible: boolean;
+    auto_renew: boolean;
+  } | null;
+  stats: {
+    this_month_saved: number;
+    favorite_store: string | null;
+    last_transaction_date: string | null;
+  } | null;
+  active_campaign: null;
+}
+
+export interface DashboardTransaction {
   id: string;
-  member_id: string;
-  user_id: string;
-  status: 'active' | 'expired' | 'suspended';
-  purchase_date: string;
-  expiry_date: string;
-  auto_renew: boolean;
-  payment_method: string;
-  amount_paid: number;
-  total_savings: number;
-  total_purchases: number;
-  qr_code_data: string;
-}
-
-export interface TransactionItem {
-  name: string;
-  quantity: number;
-  unit_price: number;
-  total_price: number;
-}
-
-export interface Transaction {
-  id: string;
-  user_id: string;
-  store_id: string;
   store_name: string;
   date: string;
-  items: TransactionItem[];
-  subtotal: number;
   discount_amount: number;
-  discount_percentage: number;
-  tax: number;
-  total: number;
-  payment_method: string;
+  final_amount: number;
+  discount_type: string;
+}
+
+// ─── Membership ─────────────────────────────────────────────────────────────
+export interface MemberStatus {
+  has_membership: boolean;
+  status: string | null;
+  expiry_date: string | null;
+  member_id: string | null;
+}
+
+export interface MembershipPlan {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  duration_months: number;
+  benefits: any;
+}
+
+export interface CreateOrderResponse {
+  payment_id: string;
+  gateway_token: string;
+  amount: number;
+  currency: string;
+  expiry: string;
+  is_renewal: boolean;
+}
+
+// ─── QR Token ───────────────────────────────────────────────────────────────
+export interface QRTokenResponse {
+  token: string;
+  expires_at: number;
   member_id: string;
 }
 
-export interface Store {
+// ─── Transactions ───────────────────────────────────────────────────────────
+export interface Transaction {
   id: string;
   store_name: string;
-  address: string;
-  city: string;
-  phone_number: string;
-  latitude: number;
-  longitude: number;
-  opening_hours: string;
-  distance?: number;
+  date: string;
+  original_amount: number;
+  discount_amount: number;
+  final_amount: number;
+  discount_pct: number;
+  discount_type: string;
+  is_offline_sync: boolean;
 }
 
+export interface TransactionDetail {
+  id: string;
+  member_id: string;
+  store_name: string;
+  store_city: string;
+  date: string;
+  original_amount: number;
+  discount_pct: number;
+  discount_amount: number;
+  final_amount: number;
+  discount_type: string;
+  is_offline_sync: boolean;
+}
+
+export interface TransactionsResponse {
+  transactions: Transaction[];
+  pagination: { page: number; limit: number; total: number; total_pages: number };
+  summary: { total_saved: number; total_transactions: number };
+}
+
+// ─── Stores ─────────────────────────────────────────────────────────────────
+export interface Store {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  latitude: number | null;
+  longitude: number | null;
+  discount_pct: number;
+  phone: string | null;
+  operating_hours: any;
+  is_open_now: boolean;
+}
+
+// ─── Notifications ──────────────────────────────────────────────────────────
 export interface AppNotification {
   id: string;
   title: string;
-  message: string;
-  category: 'membership' | 'transaction' | 'promotional' | 'system';
-  is_read: boolean;
+  body: string;
+  type: string;
+  deep_link: string | null;
+  read: boolean;
+  metadata: any;
   created_at: string;
-  action_url?: string;
 }
 
+export interface NotificationsResponse {
+  notifications: AppNotification[];
+  unread_count: number;
+  pagination: { page: number; limit: number; total: number; total_pages: number };
+}
+
+// ─── Referral (future feature — no backend endpoint yet) ────────────────────
 export interface Referral {
   id: string;
   referred_name: string;
@@ -86,16 +192,24 @@ export interface ReferralStats {
   referrals: Referral[];
 }
 
+// ─── Constants (moved from mockData) ────────────────────────────────────────
+export const PAKISTANI_CITIES = [
+  'Karachi', 'Lahore', 'Islamabad', 'Rawalpindi', 'Faisalabad',
+  'Multan', 'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala',
+  'Hyderabad', 'Bahawalpur', 'Sargodha', 'Sukkur', 'Larkana',
+  'Sheikhupura', 'Jhang', 'Rahim Yar Khan', 'Mardan', 'Abbottabad',
+];
+
 export type RootStackParamList = {
   Onboarding: undefined;
   AuthChoice: undefined;
   Register: undefined;
-  OTPVerification: { phone_number: string; from: 'register' | 'login' };
+  OTPVerification: { phone_number: string; from: 'register' | 'login'; user_id?: string };
   Login: undefined;
   ForgotPassword: undefined;
   MainTabs: undefined;
   MembershipPurchase: undefined;
-  PaymentProcessing: { method: string; amount: number };
+  PaymentProcessing: { method: string; amount: number; payment_id?: string; gateway_token?: string };
   MembershipSuccess: undefined;
   TransactionDetail: { transaction_id: string };
   EditProfile: undefined;

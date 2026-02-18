@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
-import { RootStackParamList, AppNotification } from '../types';
-import { MOCK_NOTIFICATIONS } from '../services/mockData';
+import { RootStackParamList, AppNotification, NotificationsResponse } from '../types';
+import { api } from '../services/apiClient';
 import { formatRelativeTime } from '../utils';
 import EmptyState from '../components/EmptyState';
 
@@ -14,17 +14,42 @@ interface Props { navigation: NativeStackNavigationProp<RootStackParamList, 'Not
 type FilterCat = 'all' | 'membership' | 'transaction' | 'promotional' | 'system';
 
 export default function NotificationsScreen({ navigation }: Props) {
-  const [notifications, setNotifications] = useState<AppNotification[]>(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [filter, setFilter] = useState<FilterCat>('all');
-  const filtered = filter === 'all' ? notifications : notifications.filter(n => n.category === filter);
-  const unread = notifications.filter(n => !n.is_read).length;
+  const [unread, setUnread] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const markRead = (id: string) => setNotifications(p => p.map(n => n.id === id ? { ...n, is_read: true } : n));
-  const markAllRead = () => setNotifications(p => p.map(n => ({ ...n, is_read: true })));
+  const loadNotifications = async () => {
+    const res = await api.get<NotificationsResponse>('/notifications', { limit: '50' });
+    if (res.success && res.data) {
+      setNotifications(res.data.notifications);
+      setUnread(res.data.unread_count);
+    }
+  };
+
+  useEffect(() => { loadNotifications(); }, []);
+
+  const onRefresh = async () => { setRefreshing(true); await loadNotifications(); setRefreshing(false); };
+
+  const filtered = filter === 'all' ? notifications : notifications.filter(n => n.type === filter);
+
+  const markRead = async (id: string) => {
+    await api.put(`/notifications/${id}/read`);
+    setNotifications(p => p.map(n => n.id === id ? { ...n, read: true } : n));
+    setUnread(prev => Math.max(0, prev - 1));
+  };
+  const markAllRead = async () => {
+    await api.put('/notifications/read-all');
+    setNotifications(p => p.map(n => ({ ...n, read: true })));
+    setUnread(0);
+  };
 
   const handlePress = (n: AppNotification) => {
-    markRead(n.id);
-    if (n.category === 'transaction' && n.action_url) navigation.navigate('TransactionDetail', { transaction_id: n.action_url });
+    if (!n.read) markRead(n.id);
+    if (n.type === 'transaction' && n.deep_link) {
+      const txnId = n.deep_link.replace('mumuso://', '');
+      if (txnId) navigation.navigate('TransactionDetail', { transaction_id: txnId });
+    }
   };
 
   const FILTERS: { key: FilterCat; label: string }[] = [
@@ -33,8 +58,8 @@ export default function NotificationsScreen({ navigation }: Props) {
   ];
 
   const getCategoryInitial = (cat: string) => {
-    const map: Record<string, string> = { membership: 'M', transaction: 'T', promotional: 'P', system: 'S' };
-    return map[cat] || 'N';
+    const map: Record<string, string> = { membership_activated: 'M', membership_renewed: 'M', transaction: 'T', promotional: 'P', system: 'S' };
+    return map[cat] || cat.charAt(0).toUpperCase();
   };
 
   return (
@@ -53,20 +78,19 @@ export default function NotificationsScreen({ navigation }: Props) {
         ))}
       </ScrollView>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.tertiary} />}>
         {filtered.length === 0 ? <EmptyState title="No notifications" message="We'll notify you about updates and offers" /> : (
           filtered.map((n, idx) => (
-            <TouchableOpacity key={n.id} style={styles.notifRow} onPress={() => handlePress(n)} activeOpacity={0.7}
-              onLongPress={() => setNotifications(p => p.filter(x => x.id !== n.id))}>
-              <View style={[styles.notifAvatar, !n.is_read && styles.notifAvatarUnread]}>
-                <Text style={styles.notifAvatarText}>{getCategoryInitial(n.category)}</Text>
+            <TouchableOpacity key={n.id} style={styles.notifRow} onPress={() => handlePress(n)} activeOpacity={0.7}>
+              <View style={[styles.notifAvatar, !n.read && styles.notifAvatarUnread]}>
+                <Text style={styles.notifAvatarText}>{getCategoryInitial(n.type)}</Text>
               </View>
               <View style={styles.notifContent}>
                 <View style={styles.notifTitleRow}>
-                  <Text style={[styles.notifTitle, !n.is_read && styles.notifTitleUnread]} numberOfLines={1}>{n.title}</Text>
-                  {!n.is_read && <View style={styles.unreadDot} />}
+                  <Text style={[styles.notifTitle, !n.read && styles.notifTitleUnread]} numberOfLines={1}>{n.title}</Text>
+                  {!n.read && <View style={styles.unreadDot} />}
                 </View>
-                <Text style={styles.notifMsg} numberOfLines={2}>{n.message}</Text>
+                <Text style={styles.notifMsg} numberOfLines={2}>{n.body}</Text>
                 <Text style={styles.notifTime}>{formatRelativeTime(n.created_at)}</Text>
               </View>
             </TouchableOpacity>

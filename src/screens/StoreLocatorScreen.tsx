@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
-import { RootStackParamList } from '../types';
-import { MOCK_STORES } from '../services/mockData';
-import { getOpeningStatus } from '../utils';
+import { RootStackParamList, Store } from '../types';
+import { api } from '../services/apiClient';
 import Input from '../components/Input';
 
 const H = 24;
@@ -14,7 +13,26 @@ interface Props { navigation: NativeStackNavigationProp<RootStackParamList, 'Sto
 
 export default function StoreLocatorScreen({ navigation }: Props) {
   const [search, setSearch] = useState('');
-  const filtered = MOCK_STORES.filter(s => s.store_name.toLowerCase().includes(search.toLowerCase()) || s.address.toLowerCase().includes(search.toLowerCase()) || s.city.toLowerCase().includes(search.toLowerCase()));
+  const [stores, setStores] = useState<Store[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadStores = async (searchTerm?: string) => {
+    const query: Record<string, string | undefined> = {};
+    if (searchTerm) query.search = searchTerm;
+    const res = await api.get<{ stores: Store[] }>('/stores', query);
+    if (res.success && res.data) setStores(res.data.stores || (res.data as any));
+  };
+
+  useEffect(() => { loadStores(); }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => { loadStores(search || undefined); }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const onRefresh = async () => { setRefreshing(true); await loadStores(search || undefined); setRefreshing(false); };
+
+  const filtered = stores;
 
   return (
     <View style={styles.screen}>
@@ -35,29 +53,30 @@ export default function StoreLocatorScreen({ navigation }: Props) {
 
       <Text style={styles.count}>{filtered.length} store{filtered.length !== 1 ? 's' : ''}</Text>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.tertiary} />}>
         {filtered.map(store => {
-          const status = getOpeningStatus(store.opening_hours);
           return (
             <View key={store.id} style={styles.storeCard}>
-              <Text style={styles.storeName}>{store.store_name}</Text>
+              <Text style={styles.storeName}>{store.name}</Text>
               <Text style={styles.storeAddr}>{store.address}</Text>
               <View style={styles.badgeRow}>
-                {store.distance !== undefined && (
-                  <View style={styles.badge}><Text style={styles.badgeText}>{store.distance} km</Text></View>
-                )}
-                <View style={[styles.badge, status.isOpen ? styles.openBadge : styles.closedBadge]}>
-                  <Text style={[styles.badgeText, status.isOpen ? styles.openText : styles.closedText]}>{status.text}</Text>
+                <View style={styles.badge}><Text style={styles.badgeText}>{store.discount_pct}% off</Text></View>
+                <View style={[styles.badge, store.is_open_now ? styles.openBadge : styles.closedBadge]}>
+                  <Text style={[styles.badgeText, store.is_open_now ? styles.openText : styles.closedText]}>{store.is_open_now ? 'Open' : 'Closed'}</Text>
                 </View>
               </View>
               <View style={styles.divider} />
               <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}`).catch(() => Alert.alert('Error', 'Could not open maps.'))}>
-                  <Text style={styles.actionText}>Directions</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => Linking.openURL(`tel:${store.phone_number}`).catch(() => Alert.alert('Error', 'Could not open dialer.'))}>
-                  <Text style={styles.actionText}>Call</Text>
-                </TouchableOpacity>
+                {store.latitude && store.longitude && (
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${store.latitude},${store.longitude}`).catch(() => Alert.alert('Error', 'Could not open maps.'))}>
+                    <Text style={styles.actionText}>Directions</Text>
+                  </TouchableOpacity>
+                )}
+                {store.phone && (
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => Linking.openURL(`tel:${store.phone}`).catch(() => Alert.alert('Error', 'Could not open dialer.'))}>
+                    <Text style={styles.actionText}>Call</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           );

@@ -5,7 +5,7 @@ import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
-import { formatCurrency, formatDate } from '../utils';
+import { formatDate, formatCurrency } from '../utils';
 import Button from '../components/Button';
 
 const H = 24;
@@ -15,7 +15,8 @@ interface MembershipSuccessScreenProps {
 }
 
 export default function MembershipSuccessScreen({ navigation }: MembershipSuccessScreenProps) {
-  const { membership } = useAuth();
+  const { dashboard } = useAuth();
+  const daysRemaining = dashboard?.days_remaining || 365;
 
   useEffect(() => {
     const timer = setTimeout(() => navigation.replace('MainTabs'), 10000);
@@ -35,24 +36,24 @@ export default function MembershipSuccessScreen({ navigation }: MembershipSucces
       {/* Card preview */}
       <View style={styles.cardPreview}>
         <Text style={styles.cardLabel}>MUMUSO MEMBER</Text>
-        <Text style={styles.cardId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
+        <Text style={styles.cardId}>{dashboard?.member_id || 'MUM-XXXXX'}</Text>
       </View>
 
       {/* Details */}
       <View style={styles.detailsCard}>
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Member Since</Text>
-          <Text style={styles.detailValue}>{membership ? formatDate(membership.purchase_date) : 'Today'}</Text>
+          <Text style={styles.detailValue}>{dashboard?.membership?.activated_at ? formatDate(dashboard.membership.activated_at) : 'Today'}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Valid Until</Text>
-          <Text style={styles.detailValue}>{membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
+          <Text style={styles.detailValue}>{dashboard?.expiry_date ? formatDate(dashboard.expiry_date) : 'N/A'}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Amount Paid</Text>
-          <Text style={styles.detailValue}>{formatCurrency(membership?.amount_paid || 2000)}</Text>
+          <Text style={styles.detailValue}>{formatCurrency(2000)}</Text>
         </View>
         <View style={styles.divider} />
         <View style={styles.detailRow}>

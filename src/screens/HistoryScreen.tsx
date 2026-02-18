@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, Transaction, TransactionsResponse } from '../types';
 import { formatCurrency, formatDate } from '../utils';
-import { MOCK_TRANSACTIONS } from '../services/mockData';
+import { api } from '../services/apiClient';
 import EmptyState from '../components/EmptyState';
 
 const H = 24;
@@ -17,23 +17,32 @@ type FilterPeriod = '7d' | '30d' | '3m' | 'all';
 export default function HistoryScreen({ navigation }: HistoryScreenProps) {
   const [filter, setFilter] = useState<FilterPeriod>('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [summary, setSummary] = useState({ total_saved: 0, total_transactions: 0 });
 
-  const now = new Date();
-  const filtered = MOCK_TRANSACTIONS.filter(t => {
-    if (filter === 'all') return true;
-    const d = new Date(t.date);
-    const diffDays = (now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24);
-    if (filter === '7d') return diffDays <= 7;
-    if (filter === '30d') return diffDays <= 30;
-    if (filter === '3m') return diffDays <= 90;
-    return true;
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const loadTransactions = useCallback(async () => {
+    const query: Record<string, string | undefined> = { limit: '50' };
+    if (filter !== 'all') {
+      const now = new Date();
+      const days = filter === '7d' ? 7 : filter === '30d' ? 30 : 90;
+      const from = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+      query.from_date = from.toISOString().split('T')[0];
+    }
+    const res = await api.get<TransactionsResponse>('/member/transactions', query);
+    if (res.success && res.data) {
+      setTransactions(res.data.transactions);
+      setSummary(res.data.summary);
+    }
+  }, [filter]);
 
-  const totalSpent = filtered.reduce((s, t) => s + t.total, 0);
-  const totalSaved = filtered.reduce((s, t) => s + t.discount_amount, 0);
+  useEffect(() => { loadTransactions(); }, [loadTransactions]);
+
+  const filtered = transactions;
+  const totalSpent = filtered.reduce((s, t) => s + t.final_amount, 0);
+  const totalSaved = summary.total_saved;
   const txnCount = filtered.length;
 
-  const onRefresh = async () => { setRefreshing(true); await new Promise(r => setTimeout(r, 1000)); setRefreshing(false); };
+  const onRefresh = async () => { setRefreshing(true); await loadTransactions(); setRefreshing(false); };
 
   const FILTERS: { key: FilterPeriod; label: string }[] = [
     { key: 'all', label: 'All' }, { key: '7d', label: '7 days' }, { key: '30d', label: '30 days' }, { key: '3m', label: '3 months' },
@@ -97,10 +106,10 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
                         <View style={styles.txnAvatar}><Text style={styles.txnAvatarText}>{initials}</Text></View>
                         <View style={styles.txnCenter}>
                           <Text style={styles.txnStore} numberOfLines={1}>{txn.store_name}</Text>
-                          <Text style={styles.txnMeta}>{txn.items.length} items</Text>
+                          <Text style={styles.txnMeta}>{txn.discount_type} discount</Text>
                         </View>
                         <View style={styles.txnRight}>
-                          <Text style={styles.txnTotal}>{formatCurrency(txn.total)}</Text>
+                          <Text style={styles.txnTotal}>{formatCurrency(txn.final_amount)}</Text>
                           <Text style={styles.txnSaved}>{'\u2013'}{formatCurrency(txn.discount_amount)}</Text>
                         </View>
                       </View>

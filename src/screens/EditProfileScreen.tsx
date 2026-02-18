@@ -6,7 +6,7 @@ import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 import { validateEmail } from '../utils';
-import { PAKISTANI_CITIES } from '../services/mockData';
+import { PAKISTANI_CITIES } from '../types';
 import Button from '../components/Button';
 import Input from '../components/Input';
 
@@ -16,13 +16,13 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
   const { user, updateUser } = useAuth();
   const [fullName, setFullName] = useState(user?.full_name || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [dob, setDob] = useState(user?.date_of_birth || '');
-  const [gender, setGender] = useState(user?.gender || '');
-  const [city, setCity] = useState(user?.city || '');
+  const [dob, setDob] = useState('');
+  const [gender, setGender] = useState('');
+  const [city, setCity] = useState('');
   const [loading, setLoading] = useState(false);
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const hasChanges = fullName !== user?.full_name || email !== user?.email || dob !== user?.date_of_birth || gender !== (user?.gender || '') || city !== user?.city;
+  const hasChanges = fullName !== user?.full_name || email !== user?.email || dob !== '' || gender !== '' || city !== '';
 
   const handleSave = async () => {
     const e: Record<string, string> = {};
@@ -32,11 +32,14 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
     setErrors(e);
     if (Object.keys(e).length > 0) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    updateUser({ full_name: fullName, email, date_of_birth: dob, gender: gender as any, city });
+    const result = await updateUser({ full_name: fullName });
     setLoading(false);
-    Alert.alert('Saved', 'Profile updated successfully');
-    navigation.goBack();
+    if (result.success) {
+      Alert.alert('Saved', 'Profile updated successfully');
+      navigation.goBack();
+    } else {
+      Alert.alert('Error', result.error || 'Failed to update profile');
+    }
   };
 
   return (

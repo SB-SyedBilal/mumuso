@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, QRTokenResponse } from '../types';
 import { useAuth } from '../services/AuthContext';
-import { formatDate, getDaysRemaining } from '../utils';
+import { formatDate } from '../utils';
+import { api } from '../services/apiClient';
 import Button from '../components/Button';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -15,11 +16,25 @@ interface MyCardScreenProps {
 }
 
 export default function MyCardScreen({ navigation }: MyCardScreenProps) {
-  const { user, membership } = useAuth();
+  const { user, dashboard } = useAuth();
   const [showBack, setShowBack] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
-  const daysRemaining = membership ? getDaysRemaining(membership.expiry_date) : 0;
-  const isExpired = membership?.status !== 'active' || daysRemaining <= 0;
+  const [qrData, setQrData] = useState<string | null>(null);
+  const daysRemaining = dashboard?.days_remaining || 0;
+  const isExpired = dashboard?.status !== 'active' || daysRemaining <= 0;
+
+  const fetchQRToken = useCallback(async () => {
+    if (isExpired) return;
+    const res = await api.get<QRTokenResponse>('/member/qr-token');
+    if (res.success && res.data) {
+      setQrData(res.data.token);
+      // Auto-refresh before expiry
+      const expiresIn = (res.data.expires_at * 1000) - Date.now() - 5000;
+      if (expiresIn > 0) setTimeout(fetchQRToken, expiresIn);
+    }
+  }, [isExpired]);
+
+  useEffect(() => { fetchQRToken(); }, [fetchQRToken]);
 
   let QRCode: any = null;
   try { QRCode = require('react-native-qrcode-svg').default; } catch (e) { /* fallback */ }
@@ -32,16 +47,16 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
         </View>
       );
     }
-    if (QRCode && membership?.qr_code_data) {
+    if (QRCode && qrData) {
       return (
         <View style={[styles.qrContainer, { width: size, height: size }]}>
-          <QRCode value={membership.qr_code_data} size={size - 32} backgroundColor="#FFFFFF" />
+          <QRCode value={qrData} size={size - 32} backgroundColor="#FFFFFF" />
         </View>
       );
     }
     return (
       <View style={[styles.qrContainer, { width: size, height: size }]}>
-        <Text style={styles.qrFallbackId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
+        <Text style={styles.qrFallbackId}>{dashboard?.member_id || 'MUM-XXXXX'}</Text>
         <Text style={styles.qrFallbackSub}>QR Code</Text>
       </View>
     );
@@ -82,10 +97,10 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
             </View>
             <Text style={styles.cardName}>{user?.full_name || 'Member'}</Text>
             <View style={styles.cardBottomRow}>
-              <Text style={styles.cardId}>{membership?.member_id?.replace('-', ' \u00B7 ') || 'MUM \u00B7 XXXXX'}</Text>
+              <Text style={styles.cardId}>{dashboard?.member_id?.replace('-', ' \u00B7 ') || 'MUM \u00B7 XXXXX'}</Text>
               <View style={styles.cardValidCol}>
                 <Text style={styles.cardValidLabel}>VALID UNTIL</Text>
-                <Text style={styles.cardValidDate}>{membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
+                <Text style={styles.cardValidDate}>{dashboard?.expiry_date ? formatDate(dashboard.expiry_date) : 'N/A'}</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -94,7 +109,7 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
           <TouchableOpacity style={styles.card} onPress={handleCardTap} activeOpacity={0.95}>
             <View style={styles.qrBackCenter}>
               {renderQR(160)}
-              <Text style={styles.qrMemberId}>{membership?.member_id || 'MUM-XXXXX'}</Text>
+              <Text style={styles.qrMemberId}>{dashboard?.member_id || 'MUM-XXXXX'}</Text>
               <Text style={styles.showToCashier}>SHOW TO CASHIER</Text>
             </View>
           </TouchableOpacity>
@@ -141,7 +156,7 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowQRModal(false)}>
           <View style={styles.modalContent}>
             {renderQR(SCREEN_WIDTH - 100)}
-            <Text style={styles.modalId}>{membership?.member_id}</Text>
+            <Text style={styles.modalId}>{dashboard?.member_id}</Text>
             <Text style={styles.modalHint}>Show this to the cashier</Text>
           </View>
         </TouchableOpacity>

@@ -1,12 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, NotificationsResponse } from '../types';
 import { useAuth } from '../services/AuthContext';
-import { formatCurrency, formatDate, getDaysRemaining } from '../utils';
-import { MOCK_TRANSACTIONS, MOCK_NOTIFICATIONS } from '../services/mockData';
+import { formatCurrency, formatDate } from '../utils';
+import { api } from '../services/apiClient';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HORIZONTAL_MARGIN = 24;
@@ -16,16 +16,33 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ navigation }: HomeScreenProps) {
-  const { user, membership } = useAuth();
-  const daysRemaining = membership ? getDaysRemaining(membership.expiry_date) : 0;
-  const unreadNotifs = MOCK_NOTIFICATIONS.filter(n => !n.is_read).length;
-  const recentTransactions = MOCK_TRANSACTIONS.slice(0, 3);
-  const isActive = membership?.status === 'active' && daysRemaining > 0;
+  const { user, dashboard, refreshDashboard } = useAuth();
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    refreshDashboard();
+    api.get<NotificationsResponse>('/notifications', { unread_only: 'true', limit: '1' }).then(res => {
+      if (res.success && res.data) setUnreadNotifs(res.data.unread_count);
+    });
+  }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshDashboard();
+    const res = await api.get<NotificationsResponse>('/notifications', { unread_only: 'true', limit: '1' });
+    if (res.success && res.data) setUnreadNotifs(res.data.unread_count);
+    setRefreshing(false);
+  };
+
+  const daysRemaining = dashboard?.days_remaining || 0;
+  const recentTransactions = dashboard?.recent_transactions || [];
+  const isActive = dashboard?.status === 'active' && daysRemaining > 0;
   const firstName = user?.full_name?.split(' ')[0] || 'Member';
   const initials = (user?.full_name || 'M').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.tertiary} />}>
       {/* NAV BAR */}
       <View style={styles.navBar}>
         <Text style={styles.navWordmark}>MUMUSO</Text>
@@ -70,10 +87,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         </View>
         <Text style={styles.cardName}>{user?.full_name || 'Member'}</Text>
         <View style={styles.cardBottomRow}>
-          <Text style={styles.cardId}>{membership?.member_id || 'MUM \u00B7 XXXXX'}</Text>
+          <Text style={styles.cardId}>{dashboard?.member_id || 'MUM \u00B7 XXXXX'}</Text>
           <View style={styles.cardValidCol}>
             <Text style={styles.cardValidLabel}>VALID UNTIL</Text>
-            <Text style={styles.cardValidDate}>{membership ? formatDate(membership.expiry_date) : 'N/A'}</Text>
+            <Text style={styles.cardValidDate}>{dashboard?.expiry_date ? formatDate(dashboard.expiry_date) : 'N/A'}</Text>
           </View>
         </View>
       </TouchableOpacity>
@@ -83,12 +100,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <View style={styles.statsRow}>
         <View style={styles.statTile}>
           <Text style={styles.statEyebrow}>TOTAL SAVED</Text>
-          <Text style={styles.statValueGold}>{formatCurrency(membership?.total_savings || 0)}</Text>
+          <Text style={styles.statValueGold}>{formatCurrency(dashboard?.total_saved || 0)}</Text>
           <Text style={styles.statSub}>This year</Text>
         </View>
         <View style={styles.statTile}>
           <Text style={styles.statEyebrow}>PURCHASES</Text>
-          <Text style={styles.statValue}>{membership?.total_purchases || 0}</Text>
+          <Text style={styles.statValue}>{dashboard?.total_transactions || 0}</Text>
           <Text style={styles.statSub}>This year</Text>
         </View>
       </View>
@@ -144,7 +161,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   <Text style={styles.txnTime}>{time}</Text>
                 </View>
                 <View style={styles.txnRight}>
-                  <Text style={styles.txnTotal}>{formatCurrency(txn.total)}</Text>
+                  <Text style={styles.txnTotal}>{formatCurrency(txn.final_amount)}</Text>
                   <Text style={styles.txnSaved}>{'\u2013'} {formatCurrency(txn.discount_amount)}</Text>
                 </View>
               </View>

@@ -1,0 +1,366 @@
+// Mumuso Backend — Prisma Schema
+// Ref: Primary Spec Section 6 (all tables), Supplement Section 5 (indexes & constraints)
+// All tables, relations, indexes from both specification documents
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ──────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  customer
+  cashier
+  super_admin
+}
+
+enum MembershipStatus {
+  active
+  expired
+  suspended
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+}
+
+enum DiscountType {
+  full
+  partial
+}
+
+enum OTPType {
+  registration
+  password_reset
+}
+
+enum DevicePlatform {
+  ios
+  android
+}
+
+// ─── USERS TABLE ────────────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — users table
+// Rules: store_id only for cashier role; customers/super_admin have NULL store_id
+// Supplement Section 7.4: deleted_at for soft delete, 90-day re-registration block
+
+model User {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name     String    @db.VarChar(100)
+  email         String    @db.VarChar(150)
+  // Note: Unique constraint removed; partial index added via migration for soft delete support
+  // CREATE UNIQUE INDEX idx_users_email_active ON users(email) WHERE deleted_at IS NULL;
+  phone         String?   @db.VarChar(20)
+  password_hash String    @db.VarChar(255)
+  role          UserRole  @default(customer)
+  store_id      String?   @db.Uuid
+  is_active     Boolean   @default(true)
+  last_login_at DateTime?
+  deleted_at    DateTime? // Soft delete — Ref: Authorization Decision 1.5
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  // Relations
+  store                   Store?                  @relation(fields: [store_id], references: [id])
+  membership              Membership?
+  payments                Payment[]
+  otp_tokens              OTPToken[]
+  device_tokens           DeviceToken[]
+  notification_preference NotificationPreference?
+  notifications           Notification[]
+  transactions_as_member  Transaction[]           @relation("MemberTransactions")
+  transactions_as_cashier Transaction[]           @relation("CashierTransactions")
+  audit_logs              AuditLog[]
+  store_discount_changes  StoreDiscountConfig[]
+
+  @@unique([email])
+  @@index([email])
+  @@index([role])
+  @@index([store_id])
+  @@map("users")
+}
+
+// ─── STORES TABLE ───────────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — stores table
+// Rules: is_active false until discount_pct configured; only active stores visible to customers
+
+model Store {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String   @db.VarChar(150)
+  address         String
+  city            String   @db.VarChar(100)
+  country         String   @default("Pakistan") @db.VarChar(100)
+  latitude        Decimal? @db.Decimal(10, 8)
+  longitude       Decimal? @db.Decimal(11, 8)
+  phone           String?  @db.VarChar(20)
+  operating_hours Json?    // JSONB — Ref: Primary Spec Section 6, operating_hours format
+  discount_pct    Decimal? @db.Decimal(5, 2) // NULL until configured
+  is_active       Boolean  @default(false) // false until discount_pct is set
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  cashiers         User[]
+  transactions     Transaction[]
+  discount_configs StoreDiscountConfig[]
+
+  // Indexes — Ref: Supplement Section 5.1
+  @@index([is_active, discount_pct])
+  @@map("stores")
+}
+
+// ─── STORE DISCOUNT CONFIG TABLE ────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — store_discount_config table
+// Purpose: Audit trail of every discount % change per store
+
+model StoreDiscountConfig {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  store_id     String   @db.Uuid
+  discount_pct Decimal  @db.Decimal(5, 2)
+  min_allowed  Decimal  @default(5.00) @db.Decimal(5, 2)
+  max_allowed  Decimal  @default(20.00) @db.Decimal(5, 2)
+  changed_by   String?  @db.Uuid
+  changed_at   DateTime @default(now())
+
+  // Relations — Ref: Supplement Section 5.2
+  store   Store @relation(fields: [store_id], references: [id], onDelete: Cascade)
+  changer User? @relation(fields: [changed_by], references: [id])
+
+  @@index([store_id])
+  @@map("store_discount_config")
+}
+
+// ─── MEMBERSHIP PLANS TABLE ─────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — membership_plans table
+// Authorization Decision 1.6: benefits JSONB with seed values
+
+model MembershipPlan {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String   @db.VarChar(100)
+  price           Decimal  @db.Decimal(10, 2)
+  currency        String   @default("PKR") @db.VarChar(10)
+  duration_months Int      @default(12)
+  benefits        Json?    // JSONB — Authorization Decision 1.6
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now())
+
+  // Relations
+  memberships Membership[]
+  payments    Payment[]
+
+  @@map("membership_plans")
+}
+
+// ─── MEMBERSHIPS TABLE ──────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — memberships table
+// Rules: One per user; on renewal update expiry_date, don't create new record
+// member_id format: MUM-XXXXXX; status updated by scheduled job
+// Authorization Decision 1.7: Renewal extends from current_expiry + 365 days
+
+model Membership {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id      String           @unique @db.Uuid
+  member_id    String           @unique @db.VarChar(20) // MUM-XXXXXX
+  status       MembershipStatus @default(active)
+  plan_id      String?          @db.Uuid
+  start_date   DateTime         @db.Date
+  expiry_date  DateTime         @db.Date
+  payment_ref  String?          @db.VarChar(100) // Safepay payment reference
+  activated_at DateTime?
+  created_at   DateTime         @default(now())
+  updated_at   DateTime         @updatedAt
+
+  // Relations
+  user User           @relation(fields: [user_id], references: [id])
+  plan MembershipPlan? @relation(fields: [plan_id], references: [id])
+
+  // Indexes — Ref: Supplement Section 5.1
+  @@index([status, expiry_date])
+  @@index([member_id, status])
+  @@index([expiry_date])
+  @@map("memberships")
+}
+
+// ─── TRANSACTIONS TABLE ─────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — transactions table
+// Supplement Section 1.3: partial_discount_reason for partial discounts
+// Rules: discount_pct snapshotted; local_id for offline dedup
+
+model Transaction {
+  id                      String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  member_id               String       @db.VarChar(20) // Denormalised for speed
+  user_id                 String?      @db.Uuid
+  store_id                String       @db.Uuid
+  cashier_id              String       @db.Uuid
+  original_amount         Decimal      @db.Decimal(10, 2)
+  discount_pct            Decimal      @db.Decimal(5, 2) // Snapshot at transaction time
+  discount_amount         Decimal      @db.Decimal(10, 2)
+  final_amount            Decimal      @db.Decimal(10, 2)
+  discount_type           DiscountType @default(full)
+  partial_discount_reason String?      @db.VarChar(50) // Ref: Supplement Section 1.3
+  is_offline_sync         Boolean      @default(false)
+  local_id                String?      @db.VarChar(100) // Cashier app local ID for dedup
+  notification_sent       Boolean      @default(false)
+  created_at              DateTime     @default(now())
+
+  // Relations
+  member  User?  @relation("MemberTransactions", fields: [user_id], references: [id])
+  store   Store @relation(fields: [store_id], references: [id])
+  cashier User  @relation("CashierTransactions", fields: [cashier_id], references: [id])
+
+  // Indexes — Ref: Supplement Section 5.1
+// ALTERNATIVE (better):
+@@unique([cashier_id, local_id], name: "unique_local_id_per_cashier")
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([member_id])
+  @@index([store_id])
+  @@index([cashier_id])
+  @@map("transactions")
+}
+
+// ─── PAYMENTS TABLE ─────────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — payments table
+// Supplement Section 1.2: webhook_processed_at for idempotency
+
+model Payment {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id              String        @db.Uuid
+  plan_id              String?       @db.Uuid
+  amount               Decimal       @db.Decimal(10, 2)
+  currency             String        @default("PKR") @db.VarChar(10)
+  gateway              String        @default("safepay") @db.VarChar(50)
+  gateway_order_id     String?       @unique @db.VarChar(100) // Safepay order ID
+  gateway_ref          String?       @db.VarChar(100) // Safepay payment reference
+  status               PaymentStatus @default(pending)
+  payment_method       String?       @db.VarChar(50) // jazzcash, easypaisa, card etc.
+  webhook_received     Boolean       @default(false)
+  webhook_processed_at DateTime?     // Ref: Supplement Section 1.2 — idempotency
+  idempotency_key      String?       @unique @db.VarChar(100) // Authorization Decision A
+  is_renewal           Boolean       @default(false) // Distinguish new vs renewal payments
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt
+
+  // Relations
+  user User            @relation(fields: [user_id], references: [id])
+  plan MembershipPlan? @relation(fields: [plan_id], references: [id])
+
+  // Indexes
+  @@index([user_id])
+  @@index([status])
+  @@index([gateway_order_id])
+  @@map("payments")
+}
+
+// ─── OTP TOKENS TABLE ───────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — otp_tokens table
+
+model OTPToken {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        String?  @db.Uuid
+  phone_or_email String   @db.VarChar(150)
+  code           String   @db.VarChar(10)
+  type           OTPType
+  expires_at     DateTime
+  used           Boolean  @default(false)
+  attempts       Int      @default(0)
+  created_at     DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, type])
+  @@index([phone_or_email, type])
+  @@map("otp_tokens")
+}
+
+// ─── DEVICE TOKENS TABLE ────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — device_tokens table
+// Rules: One active token per user per platform; deactivate old on new registration
+
+model DeviceToken {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String         @db.Uuid
+  token      String
+  platform   DevicePlatform
+  is_active  Boolean        @default(true)
+  updated_at DateTime       @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, platform])
+  @@index([token])
+  @@map("device_tokens")
+}
+
+// ─── NOTIFICATION PREFERENCES TABLE ─────────────────────────────────────────
+// Ref: Primary Spec Section 6 — notification_preferences table
+
+model NotificationPreference {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String   @unique @db.Uuid
+  promo_offers        Boolean  @default(true)
+  renewal_reminders   Boolean  @default(true)
+  transaction_confirm Boolean  @default(true)
+  new_store_alerts    Boolean  @default(true)
+  updated_at          DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("notification_preferences")
+}
+
+// ─── NOTIFICATIONS TABLE ────────────────────────────────────────────────────
+// Authorization Decision 1.4: metadata JSONB DEFAULT '{}'
+
+model Notification {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  title      String   @db.VarChar(200)
+  body       String
+  type       String   @db.VarChar(50) // notification type key
+  deep_link  String?  @db.VarChar(200)
+  read       Boolean  @default(false)
+  metadata   Json     @default("{}") // Authorization Decision 1.4
+  created_at DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, created_at(sort: Desc)])
+  @@index([user_id, read])
+  @@map("notifications")
+}
+
+// ─── AUDIT LOGS TABLE ───────────────────────────────────────────────────────
+// Ref: Primary Spec Section 6 — audit_logs table
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_id    String?  @db.Uuid
+  action      String   @db.VarChar(100)
+  target_type String?  @db.VarChar(50)
+  target_id   String?  @db.Uuid
+  old_value   Json?
+  new_value   Json?
+  ip_address  String?  @db.VarChar(45) // IPv4/IPv6
+  created_at  DateTime @default(now())
+
+  // Relations
+  actor User? @relation(fields: [actor_id], references: [id])
+
+  @@index([actor_id])
+  @@index([action])
+  @@index([target_type, target_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}

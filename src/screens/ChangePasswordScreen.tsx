@@ -4,6 +4,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
+import { useAuth } from '../services/AuthContext';
 import { validatePassword } from '../utils';
 import Button from '../components/Button';
 import Input from '../components/Input';
@@ -11,6 +12,7 @@ import Input from '../components/Input';
 interface Props { navigation: NativeStackNavigationProp<RootStackParamList, 'ChangePassword'>; }
 
 export default function ChangePasswordScreen({ navigation }: Props) {
+  const { changePassword } = useAuth();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -27,11 +29,14 @@ export default function ChangePasswordScreen({ navigation }: Props) {
     setErrors(e);
     if (Object.keys(e).length > 0) return;
     setLoading(true);
-    // NOT SUPPORTED YET: Real password change via backend API.
-    await new Promise(r => setTimeout(r, 1500));
+    const result = await changePassword(currentPassword, newPassword, confirmPassword);
     setLoading(false);
-    Alert.alert('Done', 'Your password has been changed.');
-    navigation.goBack();
+    if (result.success) {
+      Alert.alert('Done', 'Your password has been changed.');
+      navigation.goBack();
+    } else {
+      setErrors({ currentPassword: result.error || 'Password change failed' });
+    }
   };
 
   return (

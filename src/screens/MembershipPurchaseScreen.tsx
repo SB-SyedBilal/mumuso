@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, MembershipPlan } from '../types';
+import { useAuth } from '../services/AuthContext';
 import { formatCurrency } from '../utils';
-import { MEMBERSHIP_FEE, DISCOUNT_PERCENTAGE } from '../services/mockData';
 import Button from '../components/Button';
 import Input from '../components/Input';
 
@@ -32,15 +32,31 @@ const BENEFITS = [
 ];
 
 export default function MembershipPurchaseScreen({ navigation }: MembershipPurchaseScreenProps) {
+  const { fetchPlans, createMembershipOrder } = useAuth();
+  const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const [loading, setLoading] = useState(true);
   const [selectedMethod, setSelectedMethod] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [showPromo, setShowPromo] = useState(false);
 
-  const finalAmount = MEMBERSHIP_FEE - promoDiscount;
-  const monthlyBreakdown = Math.round(finalAmount / 12);
-  const breakEvenSpend = Math.round(finalAmount / (DISCOUNT_PERCENTAGE / 100));
+  useEffect(() => {
+    const load = async () => {
+      const result = await fetchPlans();
+      if (result.success && result.plans) {
+        setPlans(result.plans);
+        setSelectedPlan(result.plans[0] || null);
+      }
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const finalAmount = (selectedPlan?.price || 0) - promoDiscount;
+  const monthlyBreakdown = Math.round(finalAmount / (selectedPlan?.duration_months || 12));
+  const breakEvenSpend = Math.round(finalAmount / 0.1);
 
   const handleApplyPromo = () => {
     // NOT SUPPORTED YET: Real promo code validation via backend API.
@@ -54,10 +70,26 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
     }
   };
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (!selectedMethod) { Alert.alert('Select payment', 'Please choose a payment method'); return; }
-    navigation.navigate('PaymentProcessing', { method: selectedMethod, amount: finalAmount });
+    if (!selectedPlan) { Alert.alert('Error', 'No plan selected'); return; }
+    setLoading(true);
+    const result = await createMembershipOrder(selectedPlan.id);
+    setLoading(false);
+    if (result.success && result.data) {
+      navigation.navigate('PaymentProcessing', { method: selectedMethod, amount: finalAmount, payment_id: result.data.payment_id, gateway_token: result.data.gateway_token });
+    } else {
+      Alert.alert('Error', result.error || 'Failed to create order');
+    }
   };
+
+  if (loading) {
+    return (
+      <View style={styles.screen}>
+        <ActivityIndicator size="large" color={colors.accent.default} style={{ marginTop: 100 }} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -68,7 +100,7 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
         </TouchableOpacity>
         <Text style={styles.heroLabel}>ANNUAL MEMBERSHIP</Text>
         <Text style={styles.heroPrice}>{formatCurrency(finalAmount)}</Text>
-        {promoApplied && <Text style={styles.heroOriginal}>Was {formatCurrency(MEMBERSHIP_FEE)}</Text>}
+        {promoApplied && <Text style={styles.heroOriginal}>Was {formatCurrency((selectedPlan?.price || 0))}</Text>}
         <Text style={styles.heroBreakdown}>Just {formatCurrency(monthlyBreakdown)}/month \u00B7 Break even at {formatCurrency(breakEvenSpend)}</Text>
       </View>
 
