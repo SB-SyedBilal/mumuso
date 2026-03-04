@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -60,7 +61,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
     const result = await register({ full_name: fullName, email, phone: formattedPhone, password, confirm_password: confirmPassword });
     setLoading(false);
     if (result.success) {
-      navigation.navigate('OTPVerification', { phone_number: phone, from: 'register', user_id: result.user_id });
+      navigation.navigate('OTPVerification', { phone_number: phone, from: 'register', user_id: result.user_id, dev_otp: result.dev_otp });
     } else {
       setErrors({ general: result.error || 'Registration failed' });
     }
@@ -71,7 +72,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
       {/* Nav */}
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>{'\u2039'}</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 
@@ -124,7 +125,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
             <Text style={styles.fieldLabel}>CITY</Text>
             <TouchableOpacity style={[styles.pickerButton, errors.city ? styles.pickerError : null]} onPress={() => setShowCityPicker(!showCityPicker)}>
               <Text style={[styles.pickerText, !city && styles.pickerPlaceholder]}>{city || 'Select your city'}</Text>
-              <Text style={styles.chevron}>{'\u203A'}</Text>
+              <Ionicons name="chevron-down" size={18} color={colors.text.tertiary} />
             </TouchableOpacity>
             {errors.city && <Text style={styles.errorText}>{errors.city}</Text>}
             {showCityPicker && (
@@ -133,7 +134,7 @@ export default function RegisterScreen({ navigation }: RegisterScreenProps) {
                   {PAKISTANI_CITIES.map(c => (
                     <TouchableOpacity key={c} style={[styles.dropdownItem, city === c && styles.dropdownItemActive]} onPress={() => { setCity(c); setShowCityPicker(false); }}>
                       <Text style={[styles.dropdownText, city === c && styles.dropdownTextActive]}>{c}</Text>
-                      {city === c && <Text style={styles.dropdownCheck}>{'\u2713'}</Text>}
+                      {city === c && <Ionicons name="checkmark" size={16} color={colors.accent.text} />}
                     </TouchableOpacity>
                   ))}
                 </ScrollView>

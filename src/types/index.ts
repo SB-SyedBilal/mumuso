@@ -10,6 +10,7 @@ export interface AuthUser {
   id: string;
   full_name: string;
   email: string;
+  phone: string;
   role: string;
   has_membership: boolean;
   store_id?: string;
@@ -28,6 +29,7 @@ export interface LoginResponse extends AuthTokens {
 export interface RegisterResponse {
   user_id: string;
   message: string;
+  dev_otp?: string;
 }
 
 export interface VerifyOTPResponse extends AuthTokens {
@@ -204,9 +206,11 @@ export type RootStackParamList = {
   Onboarding: undefined;
   AuthChoice: undefined;
   Register: undefined;
-  OTPVerification: { phone_number: string; from: 'register' | 'login'; user_id?: string };
+  OTPVerification: { phone_number: string; from: 'register' | 'login'; user_id?: string; dev_otp?: string };
   Login: undefined;
   ForgotPassword: undefined;
+  WelcomeSplash: undefined;
+  MembershipPrompt: undefined;
   MainTabs: undefined;
   MembershipPurchase: undefined;
   PaymentProcessing: { method: string; amount: number; payment_id?: string; gateway_token?: string };

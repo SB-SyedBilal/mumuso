@@ -8,6 +8,72 @@ import bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 const BCRYPT_COST_FACTOR = 12;
+const BILAL_EMAIL = 'cashier@gmail.com';
+
+async function generateSeedMemberId(): Promise<string> {
+  const lastMembership = await prisma.membership.findFirst({
+    orderBy: { member_id: 'desc' },
+    select: { member_id: true },
+  });
+
+  let nextNumber = 1;
+
+  if (lastMembership) {
+    const match = lastMembership.member_id.match(/^MUM-(\d+)$/);
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `MUM-${nextNumber.toString().padStart(6, '0')}`;
+}
+
+async function ensureBilalMembership(planId: string): Promise<void> {
+  const bilal = await prisma.user.findFirst({
+    where: { email: BILAL_EMAIL, deleted_at: null },
+  });
+
+  if (!bilal) {
+    console.warn(`⚠️  Bilal user (${BILAL_EMAIL}) not found — skipping membership seed.`);
+    return;
+  }
+
+  const existingMembership = await prisma.membership.findUnique({
+    where: { user_id: bilal.id },
+  });
+
+  const startDate = new Date();
+  const expiryDate = new Date();
+  expiryDate.setDate(expiryDate.getDate() + 365);
+
+  if (!existingMembership) {
+    const memberId = await generateSeedMemberId();
+    await prisma.membership.create({
+      data: {
+        user_id: bilal.id,
+        member_id: memberId,
+        status: 'active',
+        plan_id: planId,
+        start_date: startDate,
+        expiry_date: expiryDate,
+        payment_ref: 'SEED-PAYMENT',
+        activated_at: new Date(),
+      },
+    });
+    console.log(`✅ Membership activated for Bilal (${memberId})`);
+  } else {
+    await prisma.membership.update({
+      where: { id: existingMembership.id },
+      data: {
+        status: 'active',
+        plan_id: planId,
+        expiry_date: expiryDate,
+        activated_at: existingMembership.activated_at ?? new Date(),
+      },
+    });
+    console.log('ℹ️  Existing membership for Bilal refreshed (set to active with future expiry).');
+  }
+}
 
 async function main(): Promise<void> {
   console.log('🌱 Seeding Mumuso database...');
@@ -189,10 +255,9 @@ async function main(): Promise<void> {
     {
       id: '00000000-0000-0000-0000-000000000030',
       full_name: 'Bilal',
-      email: 'cashier@gmail.com',
+      email: BILAL_EMAIL,
       phone: '+923001234567',
-      role: 'cashier',
-      store_id: '00000000-0000-0000-0000-000000000010',
+      role: 'customer',
     },
     {
       id: '00000000-0000-0000-0000-000000000031',
@@ -221,6 +286,8 @@ async function main(): Promise<void> {
       console.log(`ℹ️  Additional user already exists: ${userSeed.email}`);
     }
   }
+
+  await ensureBilalMembership(plan.id);
 
   console.log('\n🎉 Seed completed successfully!');
 }

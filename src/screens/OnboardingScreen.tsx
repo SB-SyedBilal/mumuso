@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, Dimensions, TouchableOpacity } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, fontWeight } from '../constants/dimensions';
 
@@ -15,21 +16,21 @@ const SLIDES = [
     label: 'BENEFIT 01',
     title: 'Save 10% on every purchase',
     body: 'One membership card. Instant discounts at checkout. No coupons, no codes — just savings.',
-    icon: '\u2606',
+    icon: 'star-outline',
   },
   {
     id: '2',
     label: 'BENEFIT 02',
     title: 'Show your card, that\u2019s it',
     body: 'Open the app, show your QR code at the register, and your discount is applied automatically.',
-    icon: '\u25A1',
+    icon: 'card-outline',
   },
   {
     id: '3',
     label: 'BENEFIT 03',
     title: 'Watch your savings grow',
     body: 'Track every purchase, see exactly how much you\u2019ve saved, and know your membership pays for itself.',
-    icon: '\u25B3',
+    icon: 'bar-chart-outline',
   },
 ];
 
@@ -67,7 +68,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
           renderItem={({ item }) => (
             <View style={[styles.slideTop, { width }]}>
               <View style={styles.illustrationCircle}>
-                <Text style={styles.illustrationIcon}>{item.icon}</Text>
+                <Ionicons name={item.icon as any} size={80} color={colors.accent.default} />
               </View>
             </View>
           )}
@@ -95,7 +96,7 @@ export default function OnboardingScreen({ onComplete }: OnboardingScreenProps) 
             <View />
           )}
           <TouchableOpacity onPress={goToNext} style={styles.nextCircle} activeOpacity={0.7}>
-            <Text style={styles.nextArrow}>{isLast ? '\u2192' : '\u203A'}</Text>
+            <Ionicons name={isLast ? "arrow-forward" : "chevron-forward"} size={24} color={colors.text.inverted} />
           </TouchableOpacity>
         </View>
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Animated } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
@@ -16,7 +17,7 @@ interface OTPVerificationScreenProps {
 export default function OTPVerificationScreen({ navigation }: OTPVerificationScreenProps) {
   const route = useRoute<RouteProp<RootStackParamList, 'OTPVerification'>>();
   const { verifyOTP } = useAuth();
-  const { phone_number, user_id } = route.params;
+  const { phone_number, user_id, dev_otp } = route.params;
   const otpType = route.params.from === 'register' ? 'registration' : 'password_reset' as const;
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
@@ -26,6 +27,17 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
   const [hasError, setHasError] = useState(false);
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  // Auto-fill OTP in development mode
+  useEffect(() => {
+    if (dev_otp && dev_otp.length === 6) {
+      const digits = dev_otp.split('');
+      setOtp(digits);
+      // Auto-verify after a short delay for visual feedback
+      setTimeout(() => handleVerify(dev_otp), 500);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dev_otp]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -95,7 +107,7 @@ export default function OTPVerificationScreen({ navigation }: OTPVerificationScr
       {/* Nav */}
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>{'\u2039'}</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 

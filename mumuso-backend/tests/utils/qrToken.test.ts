@@ -11,7 +11,7 @@ describe('QR Token Utils', () => {
       const token = generateQRToken(mockMemberId);
       expect(token).toBeTruthy();
       expect(typeof token).toBe('string');
-      
+
       // Should be valid base64
       expect(() => Buffer.from(token, 'base64')).not.toThrow();
     });
@@ -19,7 +19,7 @@ describe('QR Token Utils', () => {
     it('should include member ID in token payload', () => {
       const token = generateQRToken(mockMemberId);
       const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-      
+
       expect(decoded.memberId).toBe(mockMemberId);
       expect(decoded.issuedAt).toBeDefined();
       expect(decoded.expiresAt).toBeDefined();
@@ -29,7 +29,7 @@ describe('QR Token Utils', () => {
     it('should set expiry to 5 minutes from now', () => {
       const token = generateQRToken(mockMemberId);
       const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-      
+
       const expectedExpiry = Math.floor(Date.now() / 1000) + 300;
       expect(decoded.expiresAt).toBeGreaterThanOrEqual(expectedExpiry - 2);
       expect(decoded.expiresAt).toBeLessThanOrEqual(expectedExpiry + 2);
@@ -40,7 +40,7 @@ describe('QR Token Utils', () => {
     it('should verify a valid token', () => {
       const token = generateQRToken(mockMemberId);
       const result = verifyQRToken(token);
-      
+
       expect(result.valid).toBe(true);
       expect(result.memberId).toBe(mockMemberId);
       expect(result.reason).toBeUndefined();
@@ -55,7 +55,7 @@ describe('QR Token Utils', () => {
         signature: 'invalid',
       };
       const token = Buffer.from(JSON.stringify(payload)).toString('base64');
-      
+
       const result = verifyQRToken(token);
       expect(result.valid).toBe(false);
       expect(result.reason).toBe('token_expired');
@@ -64,11 +64,11 @@ describe('QR Token Utils', () => {
     it('should reject token with invalid signature', () => {
       const token = generateQRToken(mockMemberId);
       const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
-      
+
       // Tamper with signature
       decoded.signature = 'tampered_signature';
       const tamperedToken = Buffer.from(JSON.stringify(decoded)).toString('base64');
-      
+
       const result = verifyQRToken(tamperedToken);
       expect(result.valid).toBe(false);
       expect(result.reason).toBe('invalid_signature');
@@ -83,7 +83,7 @@ describe('QR Token Utils', () => {
     it('should reject token with missing fields', () => {
       const payload = { memberId: mockMemberId };
       const token = Buffer.from(JSON.stringify(payload)).toString('base64');
-      
+
       const result = verifyQRToken(token);
       expect(result.valid).toBe(false);
       expect(result.reason).toBe('malformed_token');
@@ -97,7 +97,7 @@ describe('QR Token Utils', () => {
         issuedAt: now - 330,
         expiresAt: now - 30,
       };
-      
+
       // Generate proper signature
       const crypto = require('crypto');
       const { env } = require('../../src/config/env');
@@ -105,12 +105,82 @@ describe('QR Token Utils', () => {
         .createHmac('sha256', env.QR_SECRET)
         .update(JSON.stringify({ memberId: payload.memberId, issuedAt: payload.issuedAt, expiresAt: payload.expiresAt }))
         .digest('hex');
-      
+
       const fullPayload = { ...payload, signature };
       const token = Buffer.from(JSON.stringify(fullPayload)).toString('base64');
-      
+
       const result = verifyQRToken(token);
       expect(result.valid).toBe(true);
+    });
+
+    it('should reject token with modified memberId (signature mismatch)', () => {
+      const token = generateQRToken(mockMemberId);
+      const decoded = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
+
+      // Change the memberId — signature becomes invalid
+      decoded.memberId = 'MUM-HACKED';
+      const tamperedToken = Buffer.from(JSON.stringify(decoded)).toString('base64');
+
+      const result = verifyQRToken(tamperedToken);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_signature');
+    });
+  });
+
+  describe('Dual-secret rotation — Ref: Supplement Section 3.1', () => {
+    it('should verify token signed with the old secret during rotation', () => {
+      const crypto = require('crypto');
+      const { env } = require('../../src/config/env');
+      const oldSecret = 'old-rotation-secret-key-5678';
+
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        memberId: 'MUM-ROTATE',
+        issuedAt: now,
+        expiresAt: now + 300,
+      };
+      const signature = crypto
+        .createHmac('sha256', oldSecret)
+        .update(JSON.stringify(payload))
+        .digest('hex');
+
+      const token = Buffer.from(
+        JSON.stringify({ ...payload, signature }),
+      ).toString('base64');
+
+      // Set the old secret for rotation grace period
+      const originalOld = env.QR_SECRET_OLD;
+      env.QR_SECRET_OLD = oldSecret;
+
+      const result = verifyQRToken(token);
+      expect(result.valid).toBe(true);
+      expect(result.memberId).toBe('MUM-ROTATE');
+
+      // Restore
+      env.QR_SECRET_OLD = originalOld;
+    });
+
+    it('should reject token signed with an unknown secret', () => {
+      const crypto = require('crypto');
+
+      const now = Math.floor(Date.now() / 1000);
+      const payload = {
+        memberId: 'MUM-UNKNOWN',
+        issuedAt: now,
+        expiresAt: now + 300,
+      };
+      const signature = crypto
+        .createHmac('sha256', 'completely-unknown-secret')
+        .update(JSON.stringify(payload))
+        .digest('hex');
+
+      const token = Buffer.from(
+        JSON.stringify({ ...payload, signature }),
+      ).toString('base64');
+
+      const result = verifyQRToken(token);
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe('invalid_signature');
     });
   });
 });

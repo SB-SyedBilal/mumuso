@@ -4,18 +4,21 @@ import 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
-import { spacing, fontWeight } from '../constants/dimensions';
+import { spacing, fontWeight, radius } from '../constants/dimensions';
 import { RootStackParamList, BottomTabParamList } from '../types';
 import { useAuth } from '../services/AuthContext';
 
 import SplashScreen from '../screens/SplashScreen';
+import WelcomeSplashScreen from '../screens/WelcomeSplashScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import AuthChoiceScreen from '../screens/AuthChoiceScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import OTPVerificationScreen from '../screens/OTPVerificationScreen';
 import LoginScreen from '../screens/LoginScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
+import MembershipPromptScreen from '../screens/MembershipPromptScreen';
 import MembershipPurchaseScreen from '../screens/MembershipPurchaseScreen';
 import PaymentProcessingScreen from '../screens/PaymentProcessingScreen';
 import MembershipSuccessScreen from '../screens/MembershipSuccessScreen';
@@ -37,10 +40,10 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<BottomTabParamList>();
 
 const TAB_CONFIG: Record<string, { label: string; icon: string; activeIcon: string }> = {
-  Home:    { label: 'HOME',    icon: '\u25CB', activeIcon: '\u25CF' },
-  MyCard:  { label: 'CARD',    icon: '\u25A1', activeIcon: '\u25A0' },
-  History: { label: 'HISTORY', icon: '\u25B3', activeIcon: '\u25B2' },
-  Profile: { label: 'PROFILE', icon: '\u25C7', activeIcon: '\u25C6' },
+  Home: { label: 'HOME', icon: 'home-outline', activeIcon: 'home' },
+  MyCard: { label: 'CARD', icon: 'qr-code-outline', activeIcon: 'qr-code' },
+  History: { label: 'HISTORY', icon: 'time-outline', activeIcon: 'time' },
+  Profile: { label: 'PROFILE', icon: 'person-outline', activeIcon: 'person' },
 };
 
 function TabIcon({ focused, routeName }: { focused: boolean; routeName: string }) {
@@ -48,9 +51,11 @@ function TabIcon({ focused, routeName }: { focused: boolean; routeName: string }
   return (
     <View style={tabStyles.iconContainer}>
       {focused && <View style={tabStyles.activeIndicator} />}
-      <Text style={[tabStyles.icon, focused && tabStyles.iconActive]}>
-        {focused ? config.activeIcon : config.icon}
-      </Text>
+      <Ionicons
+        name={focused ? config.activeIcon : config.icon}
+        size={22}
+        color={focused ? colors.tabActive : colors.tabInactive}
+      />
     </View>
   );
 }
@@ -61,20 +66,25 @@ function MainTabs() {
       screenOptions={({ route }: { route: { name: string } }) => ({
         headerShown: false,
         tabBarStyle: {
-          height: 56 + (Platform.OS === 'ios' ? 34 : 0),
-          paddingBottom: Platform.OS === 'ios' ? 34 : 8,
-          paddingTop: 8,
-          backgroundColor: 'rgba(245,243,240,0.88)',
+          height: 64 + (Platform.OS === 'ios' ? 34 : 0),
+          paddingBottom: Platform.OS === 'ios' ? 34 : 12,
+          paddingTop: 12,
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: 'rgba(0,0,0,0.06)',
-          elevation: 0,
+          borderTopColor: 'rgba(0,0,0,0.05)',
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.03,
+          shadowRadius: 10,
         },
-        tabBarActiveTintColor: colors.tabActiveLabel,
+        tabBarActiveTintColor: colors.accent.default,
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: fontWeight.medium,
-          letterSpacing: 10 * 0.06,
+          fontWeight: fontWeight.bold,
+          letterSpacing: 0.5,
+          marginTop: 4,
         },
         tabBarIcon: ({ focused }: { focused: boolean }) => (
           <TabIcon focused={focused} routeName={route.name} />
@@ -93,39 +103,50 @@ const tabStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 44,
-    height: 28,
+    height: 32,
   },
   activeIndicator: {
     position: 'absolute',
-    top: -2,
-    width: 24,
+    top: -12,
+    width: 32,
     height: 3,
-    borderRadius: 2,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
     backgroundColor: colors.accent.default,
-  },
-  icon: {
-    fontSize: 20,
-    color: colors.tabInactive,
-  },
-  iconActive: {
-    color: colors.tabActive,
   },
 });
 
 export default function AppNavigator() {
-  const { isLoading, isLoggedIn, hasSeenOnboarding, completeOnboarding } = useAuth();
+  const { isLoading, isLoggedIn, hasSeenOnboarding, isFirstTimeUser, user, dashboard, completeOnboarding, completeWelcome } = useAuth();
   const [showSplash, setShowSplash] = useState(true);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const handleSplashFinish = useCallback(() => { setShowSplash(false); }, []);
   const handleOnboardingComplete = useCallback(() => { completeOnboarding(); }, [completeOnboarding]);
+  const handleWelcomeFinish = useCallback(() => { 
+    setShowWelcome(false); 
+    completeWelcome(); 
+  }, [completeWelcome]);
 
   if (isLoading || showSplash) {
     return <SplashScreen onFinish={handleSplashFinish} />;
   }
 
+  if (isFirstTimeUser && !showWelcome && isLoggedIn) {
+    setShowWelcome(true);
+  }
+
+  if (showWelcome && user) {
+    return <WelcomeSplashScreen userName={user.full_name} onFinish={handleWelcomeFinish} />;
+  }
+
+  const shouldShowMembershipPrompt = isLoggedIn && !isFirstTimeUser && dashboard && !dashboard.has_membership;
+
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Navigator 
+        screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+        initialRouteName={shouldShowMembershipPrompt ? 'MembershipPrompt' : undefined}>
         {!isLoggedIn ? (
           <>
             {!hasSeenOnboarding && (
@@ -141,6 +162,9 @@ export default function AppNavigator() {
           </>
         ) : (
           <>
+            {shouldShowMembershipPrompt && (
+              <Stack.Screen name="MembershipPrompt" component={MembershipPromptScreen} />
+            )}
             <Stack.Screen name="MainTabs" component={MainTabs} />
             <Stack.Screen name="MembershipPurchase" component={MembershipPurchaseScreen} />
             <Stack.Screen name="PaymentProcessing" component={PaymentProcessingScreen} />

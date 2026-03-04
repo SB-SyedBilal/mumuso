@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useRoute, RouteProp } from '@react-navigation/native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -49,14 +50,18 @@ export default function PaymentProcessingScreen({ navigation }: PaymentProcessin
       )}
       {status === 'success' && (
         <View style={styles.center}>
-          <View style={styles.successCircle}><Text style={styles.circleIcon}>{'\u2713'}</Text></View>
+          <View style={styles.successCircle}>
+            <Ionicons name="checkmark" size={40} color={colors.success} />
+          </View>
           <Text style={styles.headline}>Payment successful</Text>
           <Text style={styles.body}>Redirecting to your membership...</Text>
         </View>
       )}
       {status === 'failed' && (
         <View style={styles.center}>
-          <View style={styles.failCircle}><Text style={styles.circleIcon}>{'\u2717'}</Text></View>
+          <View style={styles.failCircle}>
+            <Ionicons name="close" size={40} color={colors.error} />
+          </View>
           <Text style={styles.headline}>Payment failed</Text>
           <Text style={styles.body}>Something went wrong. Please try again.</Text>
           <Button title="Retry" onPress={processPayment} variant="primary" style={styles.button} />

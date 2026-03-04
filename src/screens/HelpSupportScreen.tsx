@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Alert, TextInput } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -26,7 +27,9 @@ export default function HelpSupportScreen({ navigation }: Props) {
   return (
     <View style={styles.screen}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Text style={styles.backIcon}>{'\u2039'}</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
         <Text style={styles.navTitle}>Help & Support</Text>
         <View style={{ width: 44 }} />
       </View>
@@ -35,11 +38,11 @@ export default function HelpSupportScreen({ navigation }: Props) {
         {/* Contact */}
         <Text style={styles.sectionLabel}>CONTACT US</Text>
         <View style={styles.contactRow}>
-          <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('tel:111-686876').catch(() => {})}>
+          <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('tel:111-686876').catch(() => { })}>
             <Text style={styles.contactTitle}>Phone</Text>
             <Text style={styles.contactSub}>111-MUMUSO</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('mailto:support@mumuso.com.pk').catch(() => {})}>
+          <TouchableOpacity style={styles.contactCard} onPress={() => Linking.openURL('mailto:support@mumuso.com.pk').catch(() => { })}>
             <Text style={styles.contactTitle}>Email</Text>
             <Text style={styles.contactSub}>support@mumuso.com.pk</Text>
           </TouchableOpacity>
@@ -52,7 +55,11 @@ export default function HelpSupportScreen({ navigation }: Props) {
             <View key={i}>
               <TouchableOpacity style={styles.faqRow} onPress={() => setExpandedFaq(expandedFaq === i ? null : i)}>
                 <Text style={styles.faqQ}>{item.q}</Text>
-                <Text style={styles.faqChevron}>{expandedFaq === i ? '\u2303' : '\u2304'}</Text>
+                <Ionicons
+                  name={expandedFaq === i ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.text.tertiary}
+                />
               </TouchableOpacity>
               {expandedFaq === i && <Text style={styles.faqA}>{item.a}</Text>}
               {i < FAQ.length - 1 && <View style={styles.divider} />}

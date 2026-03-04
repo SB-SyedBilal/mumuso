@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Dimensions } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList, QRTokenResponse } from '../types';
@@ -36,9 +37,6 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
 
   useEffect(() => { fetchQRToken(); }, [fetchQRToken]);
 
-  let QRCode: any = null;
-  try { QRCode = require('react-native-qrcode-svg').default; } catch (e) { /* fallback */ }
-
   const renderQR = (size: number) => {
     if (isExpired) {
       return (
@@ -47,12 +45,21 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
         </View>
       );
     }
-    if (QRCode && qrData) {
-      return (
-        <View style={[styles.qrContainer, { width: size, height: size }]}>
-          <QRCode value={qrData} size={size - 32} backgroundColor="#FFFFFF" />
-        </View>
-      );
+    if (qrData) {
+      let QRCode: any = null;
+      try {
+        QRCode = require('react-native-qrcode-svg').default;
+      } catch (e) {
+        console.warn('QR Code library not available:', e);
+      }
+      
+      if (QRCode) {
+        return (
+          <View style={[styles.qrContainer, { width: size, height: size }]}>
+            <QRCode value={qrData} size={size - 32} backgroundColor="#FFFFFF" color="#000000" />
+          </View>
+        );
+      }
     }
     return (
       <View style={[styles.qrContainer, { width: size, height: size }]}>
@@ -63,11 +70,7 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
   };
 
   const handleCardTap = () => {
-    if (showBack) {
-      setShowBack(false);
-    } else {
-      setShowBack(true);
-    }
+    setShowBack(!showBack);
   };
 
   return (
@@ -75,10 +78,12 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
       {/* Nav */}
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>{'\u2039'}</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.text.inverted} />
         </TouchableOpacity>
-        <Text style={styles.navTitle}>My Card</Text>
-        <View style={{ width: 44 }} />
+        <Text style={styles.navTitle}>My Member Card</Text>
+        <TouchableOpacity onPress={() => setShowQRModal(true)} style={styles.expandBtn}>
+          <Ionicons name="expand-outline" size={20} color={colors.text.inverted} />
+        </TouchableOpacity>
       </View>
 
       {/* Card */}
@@ -116,23 +121,29 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
         )}
       </View>
 
-      {showBack && !isExpired && (
-        <Text style={styles.holdSteady}>Hold steady \u00B7 Cashier will scan</Text>
-      )}
+      <Text style={styles.tapHint}>
+        {showBack ? 'Tap to show front' : 'Tap to show QR code'}
+      </Text>
 
-      {/* Ghost buttons */}
+      {/* Quick Actions */}
       <View style={styles.actionsRow}>
-        {/* NOT SUPPORTED YET: Save Photo requires react-native-view-shot + media library permissions */}
-        <TouchableOpacity style={styles.ghostButton} activeOpacity={0.7}>
-          <Text style={styles.ghostButtonText}>Save Photo</Text>
+        <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+          <View style={styles.actionIconBox}>
+            <Ionicons name="download-outline" size={20} color={colors.text.inverted} />
+          </View>
+          <Text style={styles.actionBtnText}>Save</Text>
         </TouchableOpacity>
-        {/* NOT SUPPORTED YET: Add to Wallet requires Apple/Google Wallet SDK */}
-        <TouchableOpacity style={styles.ghostButton} activeOpacity={0.7}>
-          <Text style={styles.ghostButtonText}>Add to Wallet</Text>
+        <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+          <View style={styles.actionIconBox}>
+            <Ionicons name="wallet-outline" size={20} color={colors.text.inverted} />
+          </View>
+          <Text style={styles.actionBtnText}>Wallet</Text>
         </TouchableOpacity>
-        {/* NOT SUPPORTED YET: Share requires react-native-share */}
-        <TouchableOpacity style={styles.ghostButton} activeOpacity={0.7}>
-          <Text style={styles.ghostButtonText}>Share</Text>
+        <TouchableOpacity style={styles.actionBtn} activeOpacity={0.7}>
+          <View style={styles.actionIconBox}>
+            <Ionicons name="share-outline" size={20} color={colors.text.inverted} />
+          </View>
+          <Text style={styles.actionBtnText}>Share</Text>
         </TouchableOpacity>
       </View>
 
@@ -146,7 +157,8 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
       )}
 
       <View style={styles.bottomArea}>
-        <TouchableOpacity onPress={() => navigation.navigate('QRHelp')}>
+        <TouchableOpacity onPress={() => navigation.navigate('QRHelp')} style={styles.helpLink}>
+          <Ionicons name="help-circle-outline" size={16} color="#6B6361" style={{ marginRight: 6 }} />
           <Text style={styles.helpText}>QR not scanning? Get help</Text>
         </TouchableOpacity>
       </View>
@@ -158,6 +170,9 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
             {renderQR(SCREEN_WIDTH - 100)}
             <Text style={styles.modalId}>{dashboard?.member_id}</Text>
             <Text style={styles.modalHint}>Show this to the cashier</Text>
+            <TouchableOpacity style={styles.closeModal} onPress={() => setShowQRModal(false)}>
+              <Ionicons name="close-circle" size={44} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -166,24 +181,24 @@ export default function MyCardScreen({ navigation }: MyCardScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#0F0F0F' },
+  screen: { flex: 1, backgroundColor: '#0A0A0A' },
 
   navBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing['6'],
+    paddingHorizontal: 16,
     paddingTop: 56,
     paddingBottom: spacing['4'],
   },
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  backIcon: { fontSize: 28, color: colors.text.inverted },
-  navTitle: { fontSize: 17, fontWeight: fontWeight.semibold, color: colors.text.inverted },
+  expandBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  navTitle: { fontSize: 17, fontWeight: fontWeight.bold, color: colors.text.inverted },
 
   cardArea: {
     alignItems: 'center',
     paddingHorizontal: spacing['6'],
-    marginTop: spacing['4'],
+    marginTop: spacing['8'],
   },
   card: {
     width: SCREEN_WIDTH - 48,
@@ -194,34 +209,34 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     ...shadows.membership,
     borderWidth: 1,
-    borderColor: '#3A3A3E',
+    borderColor: '#2A2A2E',
   },
   cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: {
     fontSize: 10,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.text.invertedMuted,
-    letterSpacing: 10 * 0.14,
+    letterSpacing: 1.5,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  statusActive: { backgroundColor: 'rgba(74,155,127,0.12)' },
-  statusExpired: { backgroundColor: 'rgba(192,84,74,0.10)' },
+  statusActive: { backgroundColor: 'rgba(74,155,127,0.15)' },
+  statusExpired: { backgroundColor: 'rgba(192,84,74,0.15)' },
   statusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.success, marginRight: 6 },
-  statusText: { fontSize: 11, fontWeight: fontWeight.semibold },
+  statusText: { fontSize: 10, fontWeight: fontWeight.bold },
   statusActiveText: { color: colors.success },
   statusExpiredText: { color: colors.error },
-  cardName: { fontSize: 26, fontWeight: fontWeight.semibold, color: colors.text.inverted },
+  cardName: { fontSize: 28, fontWeight: fontWeight.bold, color: colors.text.inverted, letterSpacing: -0.5 },
   cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  cardId: { fontSize: 12, color: '#6B6361', letterSpacing: 0.5 },
+  cardId: { fontSize: 13, color: '#8E8E93', fontWeight: fontWeight.medium, letterSpacing: 1 },
   cardValidCol: { alignItems: 'flex-end' },
-  cardValidLabel: { fontSize: 10, color: colors.text.invertedMuted, letterSpacing: 10 * 0.06 },
-  cardValidDate: { fontSize: 14, color: colors.text.invertedMuted, marginTop: 2 },
+  cardValidLabel: { fontSize: 9, color: colors.text.invertedMuted, fontWeight: fontWeight.bold, letterSpacing: 0.8 },
+  cardValidDate: { fontSize: 14, color: colors.text.inverted, fontWeight: fontWeight.medium, marginTop: 2 },
 
   // QR back
   qrBackCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -241,56 +256,71 @@ const styles = StyleSheet.create({
   },
   qrFallbackId: { fontSize: 16, fontWeight: fontWeight.bold, color: colors.text.primary },
   qrFallbackSub: { fontSize: 12, color: colors.text.secondary, marginTop: 4 },
-  qrMemberId: { fontSize: 14, color: colors.text.invertedMuted, marginTop: spacing['3'], letterSpacing: 0.5 },
+  qrMemberId: { fontSize: 14, color: colors.text.invertedMuted, marginTop: spacing['4'], letterSpacing: 0.5 },
   showToCashier: {
     fontSize: 10,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.accent.default,
-    letterSpacing: 10 * 0.14,
+    letterSpacing: 1.5,
     marginTop: spacing['2'],
+    textTransform: 'uppercase',
   },
-  holdSteady: {
+  tapHint: {
     fontSize: 13,
     color: colors.text.invertedMuted,
     textAlign: 'center',
-    marginTop: spacing['4'],
+    marginTop: spacing['6'],
+    fontWeight: fontWeight.medium,
   },
 
   // Actions
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: spacing['3'],
-    paddingHorizontal: spacing['6'],
+    gap: 24,
+    paddingHorizontal: spacing['8'],
     marginTop: spacing['12'],
   },
-  ghostButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#3A3A3E',
+  actionBtn: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
-  ghostButtonText: { fontSize: 13, fontWeight: fontWeight.medium, color: colors.text.inverted },
+  actionIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#1C1C1E',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#2A2A2E',
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: fontWeight.bold,
+    color: colors.text.invertedMuted,
+    letterSpacing: 0.5,
+  },
 
   renewButton: {
     marginHorizontal: spacing['6'],
-    marginTop: spacing['6'],
+    marginTop: spacing['10'],
   },
 
   bottomArea: {
     flex: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: spacing['10'],
+    paddingBottom: spacing['12'],
   },
-  helpText: { fontSize: 12, color: '#6B6361', textAlign: 'center' },
+  helpLink: { flexDirection: 'row', alignItems: 'center', opacity: 0.8 },
+  helpText: { fontSize: 13, color: '#6B6361', fontWeight: fontWeight.medium },
 
   // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center' },
-  modalContent: { backgroundColor: '#FFFFFF', borderRadius: radius.lg, padding: spacing['6'], alignItems: 'center' },
-  modalId: { fontSize: 18, fontWeight: fontWeight.bold, color: colors.text.primary, marginTop: spacing['4'], letterSpacing: 1 },
-  modalHint: { fontSize: 13, color: colors.text.secondary, marginTop: spacing['2'] },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', alignItems: 'center', justifyContent: 'center' },
+  modalContent: { alignItems: 'center' },
+  modalId: { fontSize: 20, fontWeight: fontWeight.bold, color: '#FFFFFF', marginTop: spacing['6'], letterSpacing: 2 },
+  modalHint: { fontSize: 14, color: 'rgba(255,255,255,0.6)', marginTop: spacing['2'] },
+  closeModal: { marginTop: spacing['10'] },
 });

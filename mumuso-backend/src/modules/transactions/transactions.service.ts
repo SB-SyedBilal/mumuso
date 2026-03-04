@@ -6,6 +6,7 @@ import { prisma } from '../../config/database';
 import { AppError } from '../../middleware/errorHandler';
 import { logger } from '../../middleware/logger';
 import { env } from '../../config/env';
+import { createAuditLog } from '../../services/audit.service';
 import {
   RecordTransactionInput,
   SyncTransactionsInput,
@@ -78,6 +79,33 @@ export async function recordTransaction(input: RecordTransactionInput, cashierId
     originalAmount: originalAmount.toNumber(),
     discountAmount: discountAmount.toNumber(),
     finalAmount: finalAmount.toNumber(),
+  });
+
+  // Audit: TRANSACTION_RECORDED — Ref: Primary Spec Section 6
+  await createAuditLog({
+    actorId: cashierId,
+    action: 'TRANSACTION_RECORDED',
+    targetType: 'transaction',
+    targetId: transaction.id,
+    newValue: {
+      member_id: input.member_id,
+      store_id: input.store_id,
+      original_amount: originalAmount.toNumber(),
+      discount_amount: discountAmount.toNumber(),
+      final_amount: finalAmount.toNumber(),
+    },
+  });
+
+  // Push notification to member — Ref: Primary Spec Section 16
+  await prisma.notification.create({
+    data: {
+      user_id: membership.user_id,
+      title: `PKR ${discountAmount.toNumber()} saved!`,
+      body: `You saved PKR ${discountAmount.toNumber()} at ${transaction.store.name} today.`,
+      type: 'transaction_confirmed',
+      deep_link: `mumuso://transactions/${transaction.id}`,
+      metadata: { transaction_id: transaction.id },
+    },
   });
 
   return {
@@ -153,9 +181,9 @@ async function processOfflineTransaction(
   transaction_id?: string;
   error?: string;
 }> {
-  // Deduplication check by local_id — Ref: Supplement Section 4.1
-  const existing = await prisma.transaction.findUnique({
-    where: { local_id: txn.local_id },
+  // Deduplication check by cashier_id + local_id compound unique — Ref: Supplement Section 4.1
+  const existing = await prisma.transaction.findFirst({
+    where: { cashier_id: cashierId, local_id: txn.local_id },
     select: { id: true },
   });
 
@@ -229,9 +257,34 @@ async function processOfflineTransaction(
     },
   });
 
+  // Audit: TRANSACTION_OFFLINE_SYNCED — Ref: Primary Spec Section 6
+  await createAuditLog({
+    actorId: cashierId,
+    action: 'TRANSACTION_OFFLINE_SYNCED',
+    targetType: 'transaction',
+    targetId: transaction.id,
+    newValue: {
+      local_id: txn.local_id,
+      member_id: txn.member_id,
+      store_id: txn.store_id,
+    },
+  });
+
+  // Push notification to member — Ref: Primary Spec Section 16
+  await prisma.notification.create({
+    data: {
+      user_id: membership.user_id,
+      title: `PKR ${discountAmount.toNumber()} saved!`,
+      body: `You saved PKR ${discountAmount.toNumber()} at a Mumuso store.`,
+      type: 'transaction_confirmed',
+      deep_link: `mumuso://transactions/${transaction.id}`,
+      metadata: { transaction_id: transaction.id },
+    },
+  });
+
   return {
     local_id: txn.local_id,
-    status: 'created',
+    status: 'created' as const,
     transaction_id: transaction.id,
   };
 }

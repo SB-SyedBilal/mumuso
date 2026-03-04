@@ -77,6 +77,11 @@ export async function registerUser(input: RegisterInput) {
 
   logger.info('User registered, OTP sent', { userId: user.id, email });
 
+  // In development, include OTP in response so user can verify without real SMS
+  if (process.env.NODE_ENV === 'development') {
+    return { user_id: user.id, dev_otp: otpCode };
+  }
+
   return { user_id: user.id };
 }
 
@@ -208,6 +213,7 @@ export async function loginUser(input: LoginInput) {
     id: user.id,
     full_name: user.full_name,
     email: user.email,
+    phone: user.phone,
     role: user.role,
     has_membership: !!user.membership && user.membership.status === 'active',
   };

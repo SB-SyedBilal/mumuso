@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -19,7 +20,9 @@ export default function ReferralScreen({ navigation }: Props) {
     <View style={styles.screen}>
       {/* Dark hero */}
       <View style={styles.heroZone}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Text style={styles.backIcon}>{'\u2039'}</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color={colors.text.inverted} />
+        </TouchableOpacity>
         <Text style={styles.heroLabel}>REFER & EARN</Text>
         <Text style={styles.heroTitle}>Share the love</Text>
         <Text style={styles.heroSub}>Give Rs. 200 off, get 1 month free extension</Text>
@@ -43,9 +46,15 @@ export default function ReferralScreen({ navigation }: Props) {
         {/* Share */}
         <Text style={styles.sectionLabel}>SHARE VIA</Text>
         <View style={styles.shareRow}>
-          {['WhatsApp', 'SMS', 'Email', 'Copy'].map(label => (
-            <TouchableOpacity key={label} style={styles.shareChip} onPress={() => Alert.alert('Coming Soon', `NOT SUPPORTED YET: Sharing via ${label} requires native integration.`)}>
-              <Text style={styles.shareChipText}>{label}</Text>
+          {[
+            { label: 'WhatsApp', icon: 'logo-whatsapp' },
+            { label: 'SMS', icon: 'chatbubble-outline' },
+            { label: 'Email', icon: 'mail-outline' },
+            { label: 'Copy', icon: 'copy-outline' },
+          ].map(item => (
+            <TouchableOpacity key={item.label} style={styles.shareChip} onPress={() => Alert.alert('Coming Soon', `NOT SUPPORTED YET: Sharing via ${item.label} requires native integration.`)}>
+              <Ionicons name={item.icon as any} size={20} color={colors.text.secondary} />
+              <Text style={styles.shareChipText}>{item.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -101,8 +110,8 @@ const styles = StyleSheet.create({
   copyBtn: { height: 40, paddingHorizontal: spacing['5'] },
 
   shareRow: { flexDirection: 'row', gap: spacing['2'], marginBottom: spacing['6'] },
-  shareChip: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing['3'], alignItems: 'center', ...shadows.card },
-  shareChipText: { fontSize: 13, color: colors.text.secondary, fontWeight: fontWeight.medium },
+  shareChip: { flex: 1, backgroundColor: colors.surface, borderRadius: radius.lg, paddingVertical: spacing['3'], alignItems: 'center', justifyContent: 'center', gap: 6, ...shadows.card },
+  shareChipText: { fontSize: 11, color: colors.text.secondary, fontWeight: fontWeight.semibold },
 
   historyCard: { backgroundColor: colors.surface, borderRadius: radius.xl, paddingHorizontal: spacing['5'], ...shadows.card },
   refRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: spacing['4'] },

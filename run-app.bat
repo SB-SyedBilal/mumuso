@@ -40,6 +40,16 @@ timeout /t 15 /nobreak >nul
 echo Done.
 echo.
 
+echo [5.5/8] Setting up ADB reverse port forwarding (backend)...
+adb reverse tcp:3000 tcp:3000
+if %ERRORLEVEL%==0 (
+    echo [OK] Phone localhost:3000 -> PC localhost:3000
+) else (
+    echo [WARN] ADB reverse failed - make sure device is connected
+)
+echo Done.
+echo.
+
 echo [6/8] Building app with Gradle...
 cd /d C:\Professional\mumuso\android
 call gradlew.bat app:installDebug -PreactNativeDevServerPort=8081

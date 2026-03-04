@@ -65,3 +65,13 @@ export async function webhookSafepay(req: Request, res: Response, next: NextFunc
     res.status(200).json({ success: false, error: 'Internal processing error' });
   }
 }
+
+// GET /membership/renewal-info
+export async function renewalInfo(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const result = await membershipService.getRenewalInfo(req.user!.id);
+    sendSuccess(res, result);
+  } catch (error) {
+    next(error);
+  }
+}

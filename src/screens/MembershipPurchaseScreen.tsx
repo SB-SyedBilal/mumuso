@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList, MembershipPlan } from '../types';
@@ -59,7 +60,6 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
   const breakEvenSpend = Math.round(finalAmount / 0.1);
 
   const handleApplyPromo = () => {
-    // NOT SUPPORTED YET: Real promo code validation via backend API.
     if (promoCode.toUpperCase() === 'WELCOME10') {
       setPromoDiscount(200);
       setPromoApplied(true);
@@ -93,15 +93,19 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
 
   return (
     <View style={styles.screen}>
-      {/* Dark hero zone */}
-      <View style={styles.heroZone}>
+      <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>{'\u2039'}</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.text.inverted} />
         </TouchableOpacity>
+        <Text style={styles.navTitle}>Upgrade</Text>
+        <View style={{ width: 44 }} />
+      </View>
+
+      <View style={styles.heroZone}>
         <Text style={styles.heroLabel}>ANNUAL MEMBERSHIP</Text>
         <Text style={styles.heroPrice}>{formatCurrency(finalAmount)}</Text>
         {promoApplied && <Text style={styles.heroOriginal}>Was {formatCurrency((selectedPlan?.price || 0))}</Text>}
-        <Text style={styles.heroBreakdown}>Just {formatCurrency(monthlyBreakdown)}/month \u00B7 Break even at {formatCurrency(breakEvenSpend)}</Text>
+        <Text style={styles.heroBreakdown}>Just {formatCurrency(monthlyBreakdown)}/month \u2022 Break even at {formatCurrency(breakEvenSpend)}</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -110,7 +114,7 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
         <View style={styles.benefitsCard}>
           {BENEFITS.map((b, i) => (
             <View key={i} style={styles.benefitRow}>
-              <Text style={styles.benefitCheck}>{'\u2713'}</Text>
+              <Ionicons name="checkmark-circle" size={20} color={colors.success} />
               <Text style={styles.benefitText}>{b}</Text>
             </View>
           ))}
@@ -128,7 +132,6 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
             </TouchableOpacity>
           ))}
         </View>
-        {/* NOT SUPPORTED YET: Actual payment processing requires payment gateway integration */}
 
         {/* Promo */}
         <TouchableOpacity onPress={() => setShowPromo(!showPromo)} style={styles.promoToggle}>
@@ -140,7 +143,7 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
             <Button title="Apply" onPress={handleApplyPromo} variant="secondary" style={styles.promoBtn} />
           </View>
         )}
-        {promoApplied && <Text style={styles.promoSuccess}>{'\u2713'} Promo applied \u2014 you save {formatCurrency(promoDiscount)}</Text>}
+        {promoApplied && <Text style={styles.promoSuccess}><Ionicons name="checkmark" size={16} /> Promo applied \u2014 you save {formatCurrency(promoDiscount)}</Text>}
 
         {/* Terms */}
         <Text style={styles.termsText}>
@@ -159,23 +162,33 @@ export default function MembershipPurchaseScreen({ navigation }: MembershipPurch
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.canvas },
+  navBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: H,
+    paddingTop: 56,
+    paddingBottom: spacing['4'],
+    backgroundColor: colors.surfaceDarker,
+  },
+  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -spacing['2'] },
+  navTitle: { fontSize: 17, fontWeight: fontWeight.semibold, color: colors.text.inverted },
 
   heroZone: {
     backgroundColor: colors.surfaceDarker,
     paddingHorizontal: H,
-    paddingTop: 56,
+    paddingTop: spacing['2'],
     paddingBottom: spacing['8'],
     borderBottomLeftRadius: radius['3xl'],
     borderBottomRightRadius: radius['3xl'],
   },
-  backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginLeft: -spacing['2'], marginBottom: spacing['4'] },
-  backIcon: { fontSize: 28, color: colors.text.inverted },
   heroLabel: {
     fontSize: 11,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.accent.default,
-    letterSpacing: 11 * 0.14,
+    letterSpacing: 1.5,
     marginBottom: spacing['2'],
+    textTransform: 'uppercase',
   },
   heroPrice: {
     fontSize: 48,
@@ -193,17 +206,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: colors.text.invertedMuted,
     marginTop: spacing['2'],
+    fontWeight: fontWeight.medium,
   },
 
   content: { paddingHorizontal: H, paddingTop: spacing['6'] },
 
   sectionLabel: {
     fontSize: 11,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.text.tertiary,
-    letterSpacing: 11 * 0.08,
+    letterSpacing: 1.2,
     marginBottom: spacing['3'],
     marginTop: spacing['4'],
+    textTransform: 'uppercase',
   },
 
   benefitsCard: {
@@ -213,9 +228,8 @@ const styles = StyleSheet.create({
     ...shadows.card,
     marginBottom: spacing['2'],
   },
-  benefitRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing['3'], marginBottom: spacing['3'] },
-  benefitCheck: { fontSize: 14, color: colors.success, fontWeight: fontWeight.bold, marginTop: 2 },
-  benefitText: { fontSize: 15, color: colors.text.primary, flex: 1, lineHeight: 22 },
+  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: spacing['3'], marginBottom: spacing['3'] },
+  benefitText: { fontSize: 15, color: colors.text.primary, flex: 1, fontWeight: fontWeight.medium },
 
   methodRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing['2'], marginBottom: spacing['2'] },
   methodChip: {
@@ -231,11 +245,11 @@ const styles = StyleSheet.create({
   methodTextActive: { color: colors.text.inverted },
 
   promoToggle: { paddingVertical: spacing['3'] },
-  promoToggleText: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.medium },
+  promoToggleText: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.bold },
   promoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing['2'] },
   promoInput: { flex: 1, marginBottom: 0 },
   promoBtn: { height: 56, paddingHorizontal: spacing['5'] },
-  promoSuccess: { fontSize: 13, color: colors.success, fontWeight: fontWeight.medium, marginTop: spacing['2'], marginBottom: spacing['2'] },
+  promoSuccess: { fontSize: 13, color: colors.success, fontWeight: fontWeight.bold, marginTop: spacing['2'], marginBottom: spacing['2'] },
 
   termsText: {
     fontSize: 13,
@@ -243,8 +257,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: spacing['6'],
     marginBottom: spacing['4'],
+    fontWeight: fontWeight.medium,
   },
-  termsLink: { color: colors.accent.text },
+  termsLink: { color: colors.accent.text, fontWeight: fontWeight.bold },
 
   payButton: { marginBottom: spacing['4'] },
 });

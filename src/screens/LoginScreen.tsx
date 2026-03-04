@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -30,7 +31,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
     if (Object.keys(e).length > 0) return;
 
     setLoading(true);
-    const result = await login(identifier, password);
+    const result = await login(identifier.trim(), password.trim());
     setLoading(false);
     if (!result.success) {
       const newAttempts = attempts + 1;
@@ -39,7 +40,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
         setLocked(true);
         Alert.alert('Account locked', 'Too many failed attempts. Please try again in 15 minutes.');
       } else {
-        setErrors({ general: "That doesn't match our records. Please try again." });
+        setErrors({ general: result.error || "That doesn't match our records. Please try again." });
       }
     }
   };
@@ -49,7 +50,7 @@ export default function LoginScreen({ navigation }: LoginScreenProps) {
       {/* Nav */}
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>{'\u2039'}</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
 

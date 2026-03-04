@@ -121,6 +121,18 @@ if %DEVICE_COUNT%==0 (
 echo.
 
 :: ============================================================
+:: STEP 4.5: ADB Reverse Port Forwarding (Backend API)
+:: ============================================================
+echo  [4.5/6] Setting up ADB reverse port forwarding...
+"%ANDROID_HOME%\platform-tools\adb.exe" reverse tcp:3000 tcp:3000
+if %ERRORLEVEL%==0 (
+    echo        [OK] Phone localhost:3000 -^> PC localhost:3000
+) else (
+    echo        [WARN] ADB reverse failed - backend may not be reachable from device
+)
+echo.
+
+:: ============================================================
 :: STEP 5: Clean and Build
 :: ============================================================
 echo  [5/6] Cleaning previous build...

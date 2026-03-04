@@ -7,6 +7,7 @@ import { AppError } from '../../middleware/errorHandler';
 import { logger } from '../../middleware/logger';
 import { generateMemberId } from '../../utils/memberId';
 import { safepayService } from '../../services/safepay.service';
+import { createAuditLog } from '../../services/audit.service';
 import { CreateOrderInput, WebhookPayload } from './membership.schema';
 
 // GET /membership/plans — Ref: Primary Spec Section 9
@@ -228,6 +229,30 @@ export async function processWebhook(payload: WebhookPayload) {
       });
     });
 
+    // Audit: PAYMENT_COMPLETED — Ref: Primary Spec Section 6
+    await createAuditLog({
+      actorId: payment.user_id,
+      action: 'PAYMENT_COMPLETED',
+      targetType: 'payment',
+      targetId: payment.id,
+      newValue: { gateway_ref: data.payment_id, amount: payment.amount },
+    });
+
+    // Audit: MEMBERSHIP_ACTIVATED or MEMBERSHIP_RENEWED
+    const membership = await prisma.membership.findUnique({
+      where: { user_id: payment.user_id },
+      select: { id: true, member_id: true },
+    });
+    if (membership) {
+      await createAuditLog({
+        actorId: payment.user_id,
+        action: payment.is_renewal ? 'MEMBERSHIP_RENEWED' : 'MEMBERSHIP_ACTIVATED',
+        targetType: 'membership',
+        targetId: membership.id,
+        newValue: { member_id: membership.member_id, payment_id: payment.id },
+      });
+    }
+
     return { processed: true, reason: 'payment_completed' };
   }
 
@@ -242,9 +267,64 @@ export async function processWebhook(payload: WebhookPayload) {
     });
 
     logger.info('Payment failed', { paymentId: payment.id });
+
+    // Audit: PAYMENT_FAILED — Ref: Primary Spec Section 6
+    await createAuditLog({
+      actorId: payment.user_id,
+      action: 'PAYMENT_FAILED',
+      targetType: 'payment',
+      targetId: payment.id,
+      newValue: { event, status: data.status },
+    });
+
     return { processed: true, reason: 'payment_failed' };
   }
 
   logger.warn('Unhandled webhook event', { event, status: data.status });
   return { processed: false, reason: 'unhandled_event' };
+}
+
+// GET /membership/renewal-info — Ref: Primary Spec Section 9
+// Returns current expiry, projected new expiry, and plan details
+export async function getRenewalInfo(userId: string) {
+  const membership = await prisma.membership.findUnique({
+    where: { user_id: userId },
+    select: {
+      status: true,
+      expiry_date: true,
+      plan_id: true,
+    },
+  });
+
+  if (!membership) {
+    throw new AppError('NOT_FOUND', 'No membership found. Purchase a membership first.', 404);
+  }
+
+  // Get the plan for pricing info
+  const plan = membership.plan_id
+    ? await prisma.membershipPlan.findUnique({
+      where: { id: membership.plan_id },
+      select: { name: true, price: true, currency: true, duration_months: true },
+    })
+    : null;
+
+  // Calculate new expiry if renewed today
+  const currentExpiry = membership.expiry_date;
+  const renewalBase = currentExpiry > new Date() ? currentExpiry : new Date();
+  const newExpiryIfRenewed = new Date(renewalBase);
+  newExpiryIfRenewed.setDate(newExpiryIfRenewed.getDate() + 365);
+
+  return {
+    current_expiry: currentExpiry,
+    membership_status: membership.status,
+    new_expiry_if_renewed_today: newExpiryIfRenewed,
+    plan: plan
+      ? {
+        name: plan.name,
+        price: Number(plan.price),
+        currency: plan.currency,
+        duration_months: plan.duration_months,
+      }
+      : null,
+  };
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -36,7 +37,9 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
     return (
       <View style={styles.screen}>
         <View style={styles.successContent}>
-          <View style={styles.checkCircle}><Text style={styles.checkMark}>{'\u2713'}</Text></View>
+          <View style={styles.checkCircle}>
+            <Ionicons name="mail-outline" size={32} color="#FFFFFF" />
+          </View>
           <Text style={styles.headline}>Check your inbox</Text>
           <Text style={styles.subheadline}>We sent a password reset link to your registered email or phone. Follow the instructions to reset your password.</Text>
           <Button title="Back to Sign In" onPress={() => navigation.navigate('Login')} variant="primary" style={styles.button} />
@@ -49,7 +52,7 @@ export default function ForgotPasswordScreen({ navigation }: ForgotPasswordScree
     <View style={styles.screen}>
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backIcon}>{'\u2039'}</Text>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
         </TouchableOpacity>
       </View>
       <View style={styles.content}>

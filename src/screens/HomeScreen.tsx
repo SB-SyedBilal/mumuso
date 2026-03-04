@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, RefreshControl } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList, NotificationsResponse } from '../types';
@@ -38,7 +39,6 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const daysRemaining = dashboard?.days_remaining || 0;
   const recentTransactions = dashboard?.recent_transactions || [];
   const isActive = dashboard?.status === 'active' && daysRemaining > 0;
-  const firstName = user?.full_name?.split(' ')[0] || 'Member';
   const initials = (user?.full_name || 'M').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
@@ -48,7 +48,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <Text style={styles.navWordmark}>MUMUSO</Text>
         <View style={styles.navRight}>
           <TouchableOpacity style={styles.notifButton} onPress={() => navigation.navigate('Notifications')}>
-            <Text style={styles.bellIcon}>{'\u25CB'}</Text>
+            <Ionicons name="notifications-outline" size={20} color={colors.text.primary} />
             {unreadNotifs > 0 && (
               <View style={styles.notifBadge}>
                 <Text style={styles.notifBadgeText}>{unreadNotifs}</Text>
@@ -64,9 +64,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       {/* RENEWAL BANNER */}
       {daysRemaining <= 30 && daysRemaining > 0 && (
         <TouchableOpacity style={styles.renewBanner} onPress={() => navigation.navigate('RenewalScreen')}>
-          <Text style={styles.renewText}>
-            Your membership expires in {daysRemaining} days
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+            <Ionicons name="alert-circle-outline" size={18} color={colors.accent.dark} style={{ marginRight: 8 }} />
+            <Text style={styles.renewText}>
+              Your membership expires in {daysRemaining} days
+            </Text>
+          </View>
           <Text style={styles.renewLink}>Renew \u2192</Text>
         </TouchableOpacity>
       )}
@@ -99,12 +102,22 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       {/* STAT TILES */}
       <View style={styles.statsRow}>
         <View style={styles.statTile}>
-          <Text style={styles.statEyebrow}>TOTAL SAVED</Text>
+          <View style={styles.statHeader}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(155,123,63,0.1)' }]}>
+              <Ionicons name="sparkles-outline" size={14} color={colors.accent.default} />
+            </View>
+            <Text style={styles.statEyebrow}>TOTAL SAVED</Text>
+          </View>
           <Text style={styles.statValueGold}>{formatCurrency(dashboard?.total_saved || 0)}</Text>
           <Text style={styles.statSub}>This year</Text>
         </View>
         <View style={styles.statTile}>
-          <Text style={styles.statEyebrow}>PURCHASES</Text>
+          <View style={styles.statHeader}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(26,26,26,0.05)' }]}>
+              <Ionicons name="bag-handle-outline" size={14} color={colors.text.primary} />
+            </View>
+            <Text style={styles.statEyebrow}>PURCHASES</Text>
+          </View>
           <Text style={styles.statValue}>{dashboard?.total_transactions || 0}</Text>
           <Text style={styles.statSub}>This year</Text>
         </View>
@@ -116,10 +129,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actionsScroll}>
         {[
-          { label: 'Stores', icon: '\u25CB', screen: 'StoreLocator' },
-          { label: 'Notifications', icon: '\u25CB', screen: 'Notifications' },
-          { label: 'History', icon: '\u25B3', screen: 'History' },
-          { label: 'Refer', icon: '\u25C7', screen: 'ReferralScreen' },
+          { label: 'Stores', icon: 'location-outline', screen: 'StoreLocator' },
+          { label: 'Notifications', icon: 'notifications-outline', screen: 'Notifications' },
+          { label: 'History', icon: 'time-outline', screen: 'History' },
+          { label: 'Refer', icon: 'share-social-outline', screen: 'ReferralScreen' },
         ].map(action => (
           <TouchableOpacity
             key={action.label}
@@ -129,7 +142,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               else navigation.navigate(action.screen as any);
             }}
             activeOpacity={0.7}>
-            <Text style={styles.actionIcon}>{action.icon}</Text>
+            <Ionicons name={action.icon as any} size={16} color={colors.text.secondary} />
             <Text style={styles.actionLabel}>{action.label}</Text>
           </TouchableOpacity>
         ))}
@@ -139,36 +152,42 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
         <TouchableOpacity onPress={() => navigation.getParent()?.navigate('History')}>
-          <Text style={styles.seeAll}>See all \u203A</Text>
+          <Text style={styles.seeAll}>See All \u203A</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.txnCard}>
-        {recentTransactions.map((txn, index) => {
-          const storeInitials = txn.store_name.replace('Mumuso ', '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-          const time = new Date(txn.date).toLocaleTimeString('en-PK', { hour: 'numeric', minute: '2-digit' });
-          const isLast = index === recentTransactions.length - 1;
-          return (
-            <TouchableOpacity
-              key={txn.id}
-              onPress={() => navigation.navigate('TransactionDetail', { transaction_id: txn.id })}
-              activeOpacity={0.7}>
-              <View style={styles.txnRow}>
-                <View style={styles.txnAvatar}>
-                  <Text style={styles.txnAvatarText}>{storeInitials}</Text>
+        {recentTransactions.length === 0 ? (
+          <View style={{ padding: 24, alignItems: 'center' }}>
+            <Text style={{ color: colors.text.tertiary, fontSize: 13 }}>No recent transactions</Text>
+          </View>
+        ) : (
+          recentTransactions.map((txn, index) => {
+            const storeInitials = txn.store_name.replace('Mumuso ', '').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+            const time = new Date(txn.date).toLocaleTimeString('en-PK', { hour: 'numeric', minute: '2-digit' });
+            const isLast = index === recentTransactions.length - 1;
+            return (
+              <TouchableOpacity
+                key={txn.id}
+                onPress={() => navigation.navigate('TransactionDetail', { transaction_id: txn.id })}
+                activeOpacity={0.7}>
+                <View style={styles.txnRow}>
+                  <View style={styles.txnAvatar}>
+                    <Text style={styles.txnAvatarText}>{storeInitials}</Text>
+                  </View>
+                  <View style={styles.txnCenter}>
+                    <Text style={styles.txnStore} numberOfLines={1}>{txn.store_name}</Text>
+                    <Text style={styles.txnTime}>{time}</Text>
+                  </View>
+                  <View style={styles.txnRight}>
+                    <Text style={styles.txnTotal}>{formatCurrency(txn.final_amount)}</Text>
+                    <Text style={styles.txnSaved}>{'\u2013'} {formatCurrency(txn.discount_amount)}</Text>
+                  </View>
                 </View>
-                <View style={styles.txnCenter}>
-                  <Text style={styles.txnStore} numberOfLines={1}>{txn.store_name}</Text>
-                  <Text style={styles.txnTime}>{time}</Text>
-                </View>
-                <View style={styles.txnRight}>
-                  <Text style={styles.txnTotal}>{formatCurrency(txn.final_amount)}</Text>
-                  <Text style={styles.txnSaved}>{'\u2013'} {formatCurrency(txn.discount_amount)}</Text>
-                </View>
-              </View>
-              {!isLast && <View style={styles.txnDivider} />}
-            </TouchableOpacity>
-          );
-        })}
+                {!isLast && <View style={styles.txnDivider} />}
+              </TouchableOpacity>
+            );
+          })
+        )}
       </View>
 
       <View style={{ height: 120 }} />
@@ -189,10 +208,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing['4'],
   },
   navWordmark: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: fontWeight.bold,
-    color: colors.accent.text,
-    letterSpacing: 20 * 0.12,
+    color: colors.text.primary,
+    letterSpacing: 2,
   },
   navRight: {
     flexDirection: 'row',
@@ -200,37 +219,33 @@ const styles = StyleSheet.create({
     gap: spacing['3'],
   },
   notifButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: colors.surfaceRaised,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
+    ...shadows.xs,
   },
-  bellIcon: { fontSize: 18, color: colors.text.primary },
   notifBadge: {
     position: 'absolute',
-    top: -2,
-    right: -2,
+    top: 8,
+    right: 8,
     backgroundColor: colors.error,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.canvas,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
-  notifBadgeText: { color: '#FFFFFF', fontSize: 9, fontWeight: fontWeight.bold },
+  notifBadgeText: { display: 'none' },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: colors.accent.default,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { fontSize: 12, fontWeight: fontWeight.semibold, color: '#FFFFFF' },
+  avatarText: { fontSize: 13, fontWeight: fontWeight.bold, color: '#FFFFFF' },
 
   // Renewal banner
   renewBanner: {
@@ -238,16 +253,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginHorizontal: HORIZONTAL_MARGIN,
-    marginBottom: spacing['5'],
-    backgroundColor: 'rgba(200,169,110,0.12)',
-    borderLeftWidth: 3,
-    borderLeftColor: colors.accent.default,
-    borderRadius: radius.sm,
-    paddingVertical: spacing['3'],
+    marginBottom: spacing['6'],
+    backgroundColor: 'rgba(155,123,63,0.08)',
+    borderRadius: radius.lg,
+    paddingVertical: spacing['4'],
     paddingHorizontal: spacing['4'],
+    borderWidth: 1,
+    borderColor: 'rgba(155,123,63,0.15)',
   },
-  renewText: { fontSize: 13, color: colors.text.primary, fontWeight: fontWeight.medium, flex: 1 },
-  renewLink: { fontSize: 13, color: colors.accent.text, fontWeight: fontWeight.semibold, marginLeft: spacing['2'] },
+  renewText: { fontSize: 13, color: colors.text.primary, fontWeight: fontWeight.semibold, flex: 1 },
+  renewLink: { fontSize: 13, color: colors.accent.default, fontWeight: fontWeight.bold, marginLeft: spacing['2'] },
 
   // Membership card
   memberCard: {
@@ -262,19 +277,19 @@ const styles = StyleSheet.create({
   cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardLabel: {
     fontSize: 10,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.text.invertedMuted,
-    letterSpacing: 10 * 0.14,
+    letterSpacing: 1.5,
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  statusActive: { backgroundColor: 'rgba(74,155,127,0.12)' },
-  statusExpired: { backgroundColor: 'rgba(192,84,74,0.10)' },
+  statusActive: { backgroundColor: 'rgba(74,155,127,0.15)' },
+  statusExpired: { backgroundColor: 'rgba(192,84,74,0.15)' },
   statusDot: {
     width: 6,
     height: 6,
@@ -282,77 +297,82 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
     marginRight: 6,
   },
-  statusText: { fontSize: 11, fontWeight: fontWeight.semibold },
+  statusText: { fontSize: 10, fontWeight: fontWeight.bold },
   statusActiveText: { color: colors.success },
   statusExpiredText: { color: colors.error },
   cardName: {
-    fontSize: 26,
-    fontWeight: fontWeight.semibold,
+    fontSize: 28,
+    fontWeight: fontWeight.bold,
     color: colors.text.inverted,
+    letterSpacing: -0.5,
   },
   cardBottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
   cardId: {
-    fontSize: 12,
-    color: '#6B6361',
-    fontWeight: fontWeight.regular,
-    letterSpacing: 0.5,
+    fontSize: 13,
+    color: '#8E8E93',
+    fontWeight: fontWeight.medium,
+    letterSpacing: 1,
   },
   cardValidCol: { alignItems: 'flex-end' },
   cardValidLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: colors.text.invertedMuted,
-    fontWeight: fontWeight.medium,
-    letterSpacing: 10 * 0.06,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.8,
   },
   cardValidDate: {
     fontSize: 14,
-    color: colors.text.invertedMuted,
-    fontWeight: fontWeight.regular,
+    color: colors.text.inverted,
+    fontWeight: fontWeight.medium,
     marginTop: 2,
   },
   tapHint: {
     fontSize: 12,
     color: colors.text.tertiary,
     textAlign: 'center',
-    marginTop: spacing['3'],
-    marginBottom: spacing['5'],
+    marginTop: spacing['4'],
+    marginBottom: spacing['6'],
+    fontWeight: fontWeight.medium,
   },
 
   // Stat tiles
   statsRow: {
     flexDirection: 'row',
-    gap: spacing['3'],
+    gap: 12,
     paddingHorizontal: HORIZONTAL_MARGIN,
     marginBottom: spacing['8'],
   },
   statTile: {
     flex: 1,
-    height: 100,
+    height: 110,
     borderRadius: radius.xl,
     backgroundColor: colors.surface,
-    padding: spacing['5'],
+    padding: spacing['4'],
     justifyContent: 'space-between',
     ...shadows.card,
   },
+  statHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  iconBox: { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
   statEyebrow: {
-    fontSize: 10,
-    fontWeight: fontWeight.medium,
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
     color: colors.text.tertiary,
-    letterSpacing: 10 * 0.1,
+    letterSpacing: 0.8,
   },
   statValueGold: {
-    fontSize: 28,
-    fontWeight: fontWeight.semibold,
-    color: colors.accent.text,
+    fontSize: 24,
+    fontWeight: fontWeight.bold,
+    color: colors.accent.default,
   },
   statValue: {
-    fontSize: 28,
-    fontWeight: fontWeight.semibold,
+    fontSize: 24,
+    fontWeight: fontWeight.bold,
     color: colors.text.primary,
   },
   statSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: colors.text.tertiary,
+    fontWeight: fontWeight.medium,
   },
 
   // Section headers
@@ -361,38 +381,38 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: HORIZONTAL_MARGIN,
-    marginBottom: spacing['3'],
+    marginBottom: spacing['4'],
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.text.tertiary,
-    letterSpacing: 11 * 0.08,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
   seeAll: {
     fontSize: 13,
-    color: colors.accent.text,
-    fontWeight: fontWeight.medium,
+    color: colors.accent.default,
+    fontWeight: fontWeight.bold,
   },
 
   // Quick actions
   actionsScroll: {
     paddingHorizontal: HORIZONTAL_MARGIN,
-    gap: spacing['3'],
+    gap: 12,
     marginBottom: spacing['8'],
   },
   actionChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    paddingVertical: spacing['2'],
-    paddingHorizontal: spacing['4'],
-    borderRadius: radius.full,
-    ...shadows.xs,
-    gap: spacing['2'],
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    ...shadows.sm,
+    gap: 10,
   },
-  actionIcon: { fontSize: 16, color: colors.text.secondary },
-  actionLabel: { fontSize: 13, color: colors.text.primary, fontWeight: fontWeight.medium },
+  actionLabel: { fontSize: 14, color: colors.text.primary, fontWeight: fontWeight.bold },
 
   // Transactions
   txnCard: {
@@ -406,28 +426,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing['4'],
-    paddingHorizontal: spacing['5'],
-    height: 68,
+    paddingHorizontal: spacing['4'],
+    height: 72,
   },
   txnAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: colors.surfaceDark,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing['3'],
   },
-  txnAvatarText: { fontSize: 13, fontWeight: fontWeight.semibold, color: '#FFFFFF' },
+  txnAvatarText: { fontSize: 13, fontWeight: fontWeight.bold, color: '#FFFFFF' },
   txnCenter: { flex: 1 },
-  txnStore: { fontSize: 15, fontWeight: fontWeight.medium, color: colors.text.primary },
-  txnTime: { fontSize: 12, color: colors.text.tertiary, marginTop: 2 },
+  txnStore: { fontSize: 16, fontWeight: fontWeight.bold, color: colors.text.primary },
+  txnTime: { fontSize: 12, color: colors.text.tertiary, marginTop: 2, fontWeight: fontWeight.medium },
   txnRight: { alignItems: 'flex-end', marginLeft: spacing['3'] },
-  txnTotal: { fontSize: 15, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  txnSaved: { fontSize: 12, fontWeight: fontWeight.medium, color: colors.accent.text, marginTop: 2 },
+  txnTotal: { fontSize: 16, fontWeight: fontWeight.bold, color: colors.text.primary },
+  txnSaved: { fontSize: 12, fontWeight: fontWeight.bold, color: colors.accent.default, marginTop: 2 },
   txnDivider: {
     height: 1,
-    backgroundColor: colors.border.subtle,
-    marginLeft: 68,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    marginLeft: 72,
   },
 });

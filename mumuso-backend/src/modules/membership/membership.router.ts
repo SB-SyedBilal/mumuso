@@ -24,6 +24,9 @@ router.post(
   membershipController.createOrder,
 );
 
+// GET /membership/renewal-info — Authenticated, customer role
+router.get('/renewal-info', authenticate, requireRole('customer'), membershipController.renewalInfo);
+
 // POST /membership/webhook/safepay — Public (verified by signature)
 // No auth middleware — Safepay calls this directly
 router.post('/webhook/safepay', membershipController.webhookSafepay);

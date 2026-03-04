@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Switch, Platform } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -13,24 +14,43 @@ const H = 24;
 interface ProfileScreenProps { navigation: NativeStackNavigationProp<RootStackParamList>; }
 
 export default function ProfileScreen({ navigation }: ProfileScreenProps) {
-  const { user, dashboard, memberStatus, logout } = useAuth();
+  const { user, dashboard, logout } = useAuth();
   const daysRemaining = dashboard?.days_remaining || 0;
   const isActive = dashboard?.status === 'active' && daysRemaining > 0;
   const initials = (user?.full_name || 'M').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
-    Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: () => logout() },
     ]);
   };
 
-  const SettingRow = ({ label, value, onPress, danger }: { label: string; value?: string; onPress?: () => void; danger?: boolean }) => (
+  const SettingRow = ({
+    label,
+    value,
+    icon,
+    onPress,
+    danger
+  }: {
+    label: string;
+    value?: string;
+    icon?: string;
+    onPress?: () => void;
+    danger?: boolean
+  }) => (
     <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress} activeOpacity={onPress ? 0.7 : 1}>
-      <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>{label}</Text>
+      <View style={styles.rowLeft}>
+        {icon && (
+          <View style={[styles.rowIconBox, danger && { backgroundColor: 'rgba(192,84,74,0.1)' }]}>
+            <Ionicons name={icon as any} size={18} color={danger ? colors.error : colors.text.secondary} />
+          </View>
+        )}
+        <Text style={[styles.rowLabel, danger && styles.rowLabelDanger]}>{label}</Text>
+      </View>
       <View style={styles.rowRight}>
         {value ? <Text style={styles.rowValue}>{value}</Text> : null}
-        {onPress ? <Text style={styles.chevron}>{'\u203A'}</Text> : null}
+        {onPress ? <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} /> : null}
       </View>
     </TouchableOpacity>
   );
@@ -40,8 +60,8 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       {/* Nav */}
       <View style={styles.navBar}>
         <Text style={styles.navTitle}>Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('EditProfile')}>
-          <Text style={styles.editLink}>Edit</Text>
+        <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile')}>
+          <Ionicons name="create-outline" size={20} color={colors.accent.default} />
         </TouchableOpacity>
       </View>
 
@@ -59,67 +79,77 @@ export default function ProfileScreen({ navigation }: ProfileScreenProps) {
       <View style={styles.statusCard}>
         <View style={styles.statusTopRow}>
           <View>
-            <Text style={styles.statusEyebrow}>MEMBERSHIP</Text>
+            <Text style={styles.statusEyebrow}>MEMBERSHIP STATUS</Text>
             <Text style={[styles.statusValue, isActive ? styles.activeText : styles.expiredText]}>
               {isActive ? (daysRemaining <= 30 ? `Expiring in ${daysRemaining} days` : 'Active') : 'Expired'}
             </Text>
           </View>
           <View style={[styles.statusDot, isActive ? (daysRemaining <= 30 ? styles.warningDot : styles.activeDot) : styles.expiredDot]} />
         </View>
-        <Text style={styles.validUntil}>Valid until {dashboard?.expiry_date ? formatDate(dashboard.expiry_date) : 'N/A'}</Text>
-        {daysRemaining <= 30 && daysRemaining > 0 && (
-          <Button title="Renew" onPress={() => navigation.navigate('RenewalScreen')} variant="gold" style={styles.renewBtn} />
-        )}
+        <View style={styles.statusBottomRow}>
+          <Text style={styles.validUntil}>Valid until {dashboard?.expiry_date ? formatDate(dashboard.expiry_date) : 'N/A'}</Text>
+          {daysRemaining <= 30 && (
+            <TouchableOpacity onPress={() => navigation.navigate('RenewalScreen')}>
+              <Text style={styles.renewLink}>Renew Now \u203A</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
-      {/* Personal info */}
-      <Text style={styles.sectionLabel}>PERSONAL INFORMATION</Text>
+      {/* Account actions */}
+      <Text style={styles.sectionLabel}>ACCOUNT</Text>
       <View style={styles.settingsCard}>
-        <SettingRow label="Email" value={user?.email || 'N/A'} />
+        <SettingRow icon="at-outline" label="Email" value={user?.email || 'N/A'} />
         <View style={styles.divider} />
-        <SettingRow label="Phone" value={user?.phone || 'N/A'} />
+        <SettingRow icon="phone-portrait-outline" label="Phone" value={user?.phone || 'N/A'} />
+        <View style={styles.divider} />
+        <SettingRow icon="lock-closed-outline" label="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
       </View>
 
-      {/* Membership settings */}
-      <Text style={styles.sectionLabel}>MEMBERSHIP</Text>
+      {/* App settings */}
+      <Text style={styles.sectionLabel}>PREFERENCES</Text>
       <View style={styles.settingsCard}>
+        <SettingRow icon="notifications-outline" label="Notifications" onPress={() => navigation.navigate('Notifications')} />
+        <View style={styles.divider} />
         <View style={styles.row}>
-          <Text style={styles.rowLabel}>Auto-Renew</Text>
+          <View style={styles.rowLeft}>
+            <View style={styles.rowIconBox}>
+              <Ionicons name="refresh-outline" size={18} color={colors.text.secondary} />
+            </View>
+            <Text style={styles.rowLabel}>Auto-Renew</Text>
+          </View>
           <Switch
             value={dashboard?.membership?.auto_renew || false}
-            onValueChange={() => {}}
+            onValueChange={() => { }}
             trackColor={{ false: colors.border.default, true: colors.accent.default }}
-            thumbColor="#FFFFFF"
+            thumbColor={Platform.OS === 'ios' ? undefined : '#FFFFFF'}
           />
         </View>
       </View>
 
-      {/* App settings */}
-      <Text style={styles.sectionLabel}>APP</Text>
+      {/* Help & About */}
+      <Text style={styles.sectionLabel}>SUPPORT</Text>
       <View style={styles.settingsCard}>
-        <SettingRow label="Notifications" onPress={() => navigation.navigate('Notifications')} />
+        <SettingRow icon="help-buoy-outline" label="Help & Support" onPress={() => navigation.navigate('HelpSupport')} />
         <View style={styles.divider} />
-        <SettingRow label="Help & Support" onPress={() => navigation.navigate('HelpSupport')} />
-        <View style={styles.divider} />
-        <SettingRow label="About" value="v1.0.0" />
+        <SettingRow icon="information-circle-outline" label="About MUMUSO" value="v1.0.0" />
       </View>
 
-      {/* Account / Danger */}
-      <Text style={styles.sectionLabel}>ACCOUNT</Text>
+      {/* Danger Zone */}
+      <Text style={styles.sectionLabel}>DANGER ZONE</Text>
       <View style={styles.settingsCard}>
-        <SettingRow label="Change Password" onPress={() => navigation.navigate('ChangePassword')} />
-        <View style={styles.divider} />
         <SettingRow
+          icon="trash-outline"
           label="Delete Account"
           danger
-          onPress={() => Alert.alert('Delete Account', 'NOT SUPPORTED YET: Requires backend API integration.', [{ text: 'OK' }])}
+          onPress={() => Alert.alert('Delete Account', 'Are you sure you want to delete your account? This action cannot be undone.', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive' }])}
         />
       </View>
 
       <Button
         title="Sign Out"
         onPress={handleLogout}
-        variant="danger"
+        variant="secondary"
         style={styles.logoutBtn}
       />
 
@@ -136,28 +166,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: H,
     paddingTop: 56,
-    paddingBottom: spacing['2'],
+    paddingBottom: spacing['4'],
   },
-  navTitle: { fontSize: 30, fontWeight: fontWeight.semibold, color: colors.text.primary, letterSpacing: -0.3 },
-  editLink: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.medium },
+  navTitle: { fontSize: 28, fontWeight: fontWeight.bold, color: colors.text.primary, letterSpacing: -0.5 },
+  editBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.xs,
+  },
 
   profileHeader: {
     alignItems: 'center',
     paddingVertical: spacing['6'],
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.accent.default,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing['4'],
+    ...shadows.sm,
   },
-  avatarText: { fontSize: 26, fontWeight: fontWeight.semibold, color: '#FFFFFF' },
-  name: { fontSize: 22, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  memberId: { fontSize: 13, color: colors.text.tertiary, marginTop: spacing['1'], letterSpacing: 0.5 },
-  since: { fontSize: 12, color: colors.text.tertiary, marginTop: spacing['1'] },
+  avatarText: { fontSize: 28, fontWeight: fontWeight.bold, color: '#FFFFFF' },
+  name: { fontSize: 22, fontWeight: fontWeight.bold, color: colors.text.primary },
+  memberId: { fontSize: 13, color: colors.text.tertiary, marginTop: spacing['1'], letterSpacing: 0.5, fontWeight: fontWeight.medium },
+  since: { fontSize: 12, color: colors.text.tertiary, marginTop: spacing['1'], fontWeight: fontWeight.medium },
 
   statusCard: {
     marginHorizontal: H,
@@ -165,47 +204,71 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing['5'],
     ...shadows.card,
-    marginBottom: spacing['6'],
+    marginBottom: spacing['8'],
   },
   statusTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  statusEyebrow: { fontSize: 10, fontWeight: fontWeight.medium, color: colors.text.tertiary, letterSpacing: 10 * 0.1, marginBottom: spacing['1'] },
-  statusValue: { fontSize: 17, fontWeight: fontWeight.semibold },
+  statusEyebrow: {
+    fontSize: 9,
+    fontWeight: fontWeight.bold,
+    color: colors.text.tertiary,
+    letterSpacing: 1.2,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  statusValue: { fontSize: 18, fontWeight: fontWeight.bold },
   activeText: { color: colors.success },
   expiredText: { color: colors.error },
-  statusDot: { width: 10, height: 10, borderRadius: 5, marginTop: spacing['1'] },
+  statusDot: { width: 10, height: 10, borderRadius: 5, marginTop: 6 },
   activeDot: { backgroundColor: colors.success },
   warningDot: { backgroundColor: colors.warning },
   expiredDot: { backgroundColor: colors.error },
-  validUntil: { fontSize: 13, color: colors.text.tertiary, marginTop: spacing['2'] },
-  renewBtn: { marginTop: spacing['4'], alignSelf: 'flex-start', height: 40, paddingHorizontal: spacing['5'] },
+  statusBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing['3'],
+  },
+  validUntil: { fontSize: 13, color: colors.text.tertiary, fontWeight: fontWeight.medium },
+  renewLink: { fontSize: 13, color: colors.accent.default, fontWeight: fontWeight.bold },
 
   sectionLabel: {
     fontSize: 11,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.text.tertiary,
-    letterSpacing: 11 * 0.08,
+    letterSpacing: 1.2,
     paddingHorizontal: H,
     marginBottom: spacing['2'],
+    textTransform: 'uppercase',
   },
   settingsCard: {
     marginHorizontal: H,
     backgroundColor: colors.surface,
     borderRadius: radius.xl,
-    paddingHorizontal: spacing['5'],
-    marginBottom: spacing['6'],
+    paddingHorizontal: spacing['4'],
+    marginBottom: spacing['8'],
+    ...shadows.card,
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: 52,
+    height: 56,
   },
-  rowLabel: { fontSize: 15, color: colors.text.primary },
+  rowLeft: { flexDirection: 'row', alignItems: 'center' },
+  rowIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing['3'],
+  },
+  rowLabel: { fontSize: 15, color: colors.text.primary, fontWeight: fontWeight.medium },
   rowLabelDanger: { color: colors.error },
   rowRight: { flexDirection: 'row', alignItems: 'center', gap: spacing['2'] },
-  rowValue: { fontSize: 14, color: colors.text.tertiary },
-  chevron: { fontSize: 18, color: colors.text.tertiary },
-  divider: { height: 1, backgroundColor: colors.border.subtle },
+  rowValue: { fontSize: 14, color: colors.text.tertiary, fontWeight: fontWeight.medium },
+  divider: { height: 1, backgroundColor: 'rgba(0,0,0,0.03)' },
 
   logoutBtn: {
     marginHorizontal: H,

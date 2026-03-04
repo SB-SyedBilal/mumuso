@@ -2,11 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { ApiResponse } from '../types';
 
-// Android emulator uses 10.0.2.2 to reach host localhost
-// iOS simulator uses localhost directly
+// For physical devices: use `adb reverse tcp:3000 tcp:3000` so localhost works
+// For Android emulator: 10.0.2.2 maps to host — but localhost also works with adb reverse
+// For iOS simulator: localhost works directly
 const BASE_URL = Platform.OS === 'android'
-  ? 'http://10.0.2.2:3000/api/v1'
+  ? 'http://localhost:3000/api/v1'
   : 'http://localhost:3000/api/v1';
+
+// Timeout for all API requests (prevents infinite spinner)
+const REQUEST_TIMEOUT_MS = 15000;
 
 const STORAGE_KEYS = {
   ACCESS_TOKEN: 'access_token',
@@ -109,35 +113,55 @@ export async function apiRequest<T>(
   }
 
   try {
-    let response = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-    // If 401, try refresh once
-    if (response.status === 401 && auth) {
-      const newToken = await refreshAccessToken();
-      if (newToken) {
-        headers['Authorization'] = `Bearer ${newToken}`;
-        response = await fetch(url, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-        });
-      } else {
-        // Token refresh failed — return the 401 error
-        const errorJson = await response.json().catch(() => ({}));
-        return {
-          success: false,
-          error: errorJson.error || { code: 'TOKEN_EXPIRED', message: 'Session expired. Please login again.' },
-        };
+    try {
+      let response = await fetch(url, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+
+      // If 401, try refresh once
+      if (response.status === 401 && auth) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          headers['Authorization'] = `Bearer ${newToken}`;
+          response = await fetch(url, {
+            method,
+            headers,
+            body: body ? JSON.stringify(body) : undefined,
+            signal: controller.signal,
+          });
+        } else {
+          // Token refresh failed — return the 401 error
+          const errorJson = await response.json().catch(() => ({}));
+          return {
+            success: false,
+            error: errorJson.error || { code: 'TOKEN_EXPIRED', message: 'Session expired. Please login again.' },
+          };
+        }
       }
-    }
 
-    const json = await response.json();
-    return json as ApiResponse<T>;
-  } catch (error) {
+      const json = await response.json();
+      return json as ApiResponse<T>;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  } catch (error: unknown) {
+    // Timeout — AbortController fired
+    if (error instanceof Error && error.name === 'AbortError') {
+      return {
+        success: false,
+        error: {
+          code: 'TIMEOUT',
+          message: 'Request timed out. Please check that the server is running.',
+        },
+      };
+    }
+    // Network error — server unreachable
     return {
       success: false,
       error: {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -45,9 +46,11 @@ export default function EditProfileScreen({ navigation }: EditProfileScreenProps
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Text style={styles.backIcon}>{'\u2039'}</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
         <Text style={styles.navTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} disabled={!hasChanges || loading}>
+        <TouchableOpacity style={styles.navRight} onPress={handleSave} disabled={!hasChanges || loading}>
           <Text style={[styles.saveLink, (!hasChanges || loading) && { opacity: 0.3 }]}>Save</Text>
         </TouchableOpacity>
       </View>
@@ -111,6 +114,7 @@ const styles = StyleSheet.create({
   backButton: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 28, color: colors.text.primary },
   navTitle: { fontSize: 17, fontWeight: fontWeight.semibold, color: colors.text.primary },
+  navRight: { width: 44, alignItems: 'flex-end', justifyContent: 'center' },
   saveLink: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.semibold },
   content: { paddingHorizontal: spacing['6'] },
   photoSection: { alignItems: 'center', paddingVertical: spacing['6'] },

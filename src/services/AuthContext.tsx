@@ -16,14 +16,16 @@ interface AuthContextType {
   isLoading: boolean;
   isLoggedIn: boolean;
   hasSeenOnboarding: boolean;
+  isFirstTimeUser: boolean;
   user: User | null;
   dashboard: DashboardData | null;
   memberStatus: MemberStatus | null;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { full_name: string; email: string; phone: string; password: string; confirm_password: string }) => Promise<{ success: boolean; error?: string; user_id?: string }>;
+  register: (data: { full_name: string; email: string; phone: string; password: string; confirm_password: string }) => Promise<{ success: boolean; error?: string; user_id?: string; dev_otp?: string }>;
   verifyOTP: (code: string, userId: string, type: 'registration' | 'password_reset') => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   completeOnboarding: () => void;
+  completeWelcome: () => void;
   updateUser: (data: { full_name?: string; phone?: string }) => Promise<{ success: boolean; error?: string }>;
   refreshDashboard: () => Promise<void>;
   refreshMemberStatus: () => Promise<void>;
@@ -42,6 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState(false);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [memberStatus, setMemberStatus] = useState<MemberStatus | null>(null);
@@ -97,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       id: authUser.id,
       full_name: authUser.full_name,
       email: authUser.email,
-      phone: '',
+      phone: authUser.phone,
       role: authUser.role,
       has_membership: authUser.has_membership,
     };
@@ -125,7 +128,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { success: false, error: res.error?.message || 'Registration failed' };
     }
 
-    return { success: true, user_id: res.data.user_id };
+    return { success: true, user_id: res.data.user_id, dev_otp: res.data.dev_otp };
   };
 
   const verifyOTP = async (code: string, userId: string, type: 'registration' | 'password_reset') => {
@@ -155,6 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await AsyncStorage.setItem('user_data', JSON.stringify(localUser));
       setUser(localUser);
       setIsLoggedIn(true);
+      setIsFirstTimeUser(true);
 
       refreshDashboard();
       refreshMemberStatus();
@@ -181,6 +185,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const completeOnboarding = async () => {
     await AsyncStorage.setItem('has_seen_onboarding', 'true');
     setHasSeenOnboarding(true);
+  };
+
+  const completeWelcome = () => {
+    setIsFirstTimeUser(false);
   };
 
   const updateUser = async (data: { full_name?: string; phone?: string }) => {
@@ -261,8 +269,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{
-      isLoading, isLoggedIn, hasSeenOnboarding, user, dashboard, memberStatus,
-      login, register, verifyOTP, logout, completeOnboarding,
+      isLoading, isLoggedIn, hasSeenOnboarding, isFirstTimeUser, user, dashboard, memberStatus,
+      login, register, verifyOTP, logout, completeOnboarding, completeWelcome,
       updateUser, refreshDashboard, refreshMemberStatus,
       forgotPassword, resetPassword, changePassword,
       createMembershipOrder, fetchPlans,

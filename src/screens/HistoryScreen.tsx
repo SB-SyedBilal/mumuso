@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList, Transaction, TransactionsResponse } from '../types';
 import { formatCurrency, formatDate } from '../utils';
 import { api } from '../services/apiClient';
-import EmptyState from '../components/EmptyState';
+import { EmptyState, SegmentedControl } from '../components';
 
 const H = 24;
 
@@ -44,8 +45,11 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
 
   const onRefresh = async () => { setRefreshing(true); await loadTransactions(); setRefreshing(false); };
 
-  const FILTERS: { key: FilterPeriod; label: string }[] = [
-    { key: 'all', label: 'All' }, { key: '7d', label: '7 days' }, { key: '30d', label: '30 days' }, { key: '3m', label: '3 months' },
+  const PERIOD_OPTIONS = [
+    { label: 'All', value: 'all' },
+    { label: '7 Days', value: '7d' },
+    { label: '30 Days', value: '30d' },
+    { label: '3 Months', value: '3m' },
   ];
 
   // Group by date
@@ -63,33 +67,53 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
         <Text style={styles.navTitle}>History</Text>
       </View>
 
-      {/* Filter pills */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-        {FILTERS.map(f => (
-          <TouchableOpacity key={f.key} style={[styles.filterPill, filter === f.key && styles.filterPillActive]} onPress={() => setFilter(f.key)}>
-            <Text style={[styles.filterText, filter === f.key && styles.filterTextActive]}>{f.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* Filter Segmented Control */}
+      <SegmentedControl
+        options={PERIOD_OPTIONS}
+        selectedValue={filter}
+        onValueChange={(val) => setFilter(val as FilterPeriod)}
+        containerStyle={styles.filterContainer}
+      />
 
       {/* Summary tiles */}
       <View style={styles.summaryRow}>
         <View style={styles.summaryTile}>
-          <Text style={styles.summaryEyebrow}>SPENT</Text>
+          <View style={styles.summaryHeader}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(26,26,26,0.05)' }]}>
+              <Ionicons name="card-outline" size={14} color={colors.text.primary} />
+            </View>
+            <Text style={styles.summaryEyebrow}>SPENT</Text>
+          </View>
           <Text style={styles.summaryValue}>{formatCurrency(totalSpent)}</Text>
         </View>
+
         <View style={styles.summaryTile}>
-          <Text style={styles.summaryEyebrow}>SAVED</Text>
+          <View style={styles.summaryHeader}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(155,123,63,0.1)' }]}>
+              <Ionicons name="sparkles-outline" size={14} color={colors.accent.default} />
+            </View>
+            <Text style={styles.summaryEyebrow}>SAVED</Text>
+          </View>
           <Text style={styles.summaryValueGold}>{formatCurrency(totalSaved)}</Text>
         </View>
+
         <View style={styles.summaryTile}>
-          <Text style={styles.summaryEyebrow}>VISITS</Text>
+          <View style={styles.summaryHeader}>
+            <View style={[styles.iconBox, { backgroundColor: 'rgba(74,155,127,0.1)' }]}>
+              <Ionicons name="receipt-outline" size={14} color={colors.success} />
+            </View>
+            <Text style={styles.summaryEyebrow}>VISITS</Text>
+          </View>
           <Text style={styles.summaryValue}>{txnCount}</Text>
         </View>
       </View>
 
       {/* Transaction list */}
-      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.tertiary} />}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.tertiary} />}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
         {txnCount === 0 ? (
           <EmptyState title="No purchases yet" message="Your purchase history will appear here after your first transaction" />
         ) : (
@@ -121,7 +145,6 @@ export default function HistoryScreen({ navigation }: HistoryScreenProps) {
             </View>
           ))
         )}
-        <View style={{ height: 120 }} />
       </ScrollView>
     </View>
   );
@@ -132,43 +155,37 @@ const styles = StyleSheet.create({
   navBar: {
     paddingHorizontal: H,
     paddingTop: 56,
-    paddingBottom: spacing['2'],
+    paddingBottom: spacing['4'],
   },
-  navTitle: { fontSize: 30, fontWeight: fontWeight.semibold, color: colors.text.primary, letterSpacing: -0.3 },
+  navTitle: { fontSize: 32, fontWeight: fontWeight.bold, color: colors.text.primary, letterSpacing: -0.6 },
 
-  filterRow: { paddingHorizontal: H, paddingVertical: spacing['3'], gap: spacing['2'] },
-  filterPill: {
-    paddingVertical: spacing['2'],
-    paddingHorizontal: spacing['4'],
-    borderRadius: radius.full,
-    backgroundColor: colors.surfaceRaised,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-  },
-  filterPillActive: { backgroundColor: colors.text.primary, borderColor: colors.text.primary },
-  filterText: { fontSize: 13, color: colors.text.secondary, fontWeight: fontWeight.medium },
-  filterTextActive: { color: colors.text.inverted },
+  filterContainer: { marginBottom: spacing['6'] },
 
-  summaryRow: { flexDirection: 'row', gap: spacing['3'], paddingHorizontal: H, marginBottom: spacing['6'] },
+  summaryRow: { flexDirection: 'row', gap: 10, paddingHorizontal: H, marginBottom: spacing['8'] },
   summaryTile: {
     flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
-    padding: spacing['4'],
+    padding: spacing['3'],
     ...shadows.card,
+    justifyContent: 'space-between',
+    minHeight: 84,
   },
-  summaryEyebrow: { fontSize: 10, fontWeight: fontWeight.medium, color: colors.text.tertiary, letterSpacing: 10 * 0.1, marginBottom: spacing['1'] },
-  summaryValue: { fontSize: 20, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  summaryValueGold: { fontSize: 20, fontWeight: fontWeight.semibold, color: colors.accent.text },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  iconBox: { width: 24, height: 24, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
+  summaryEyebrow: { fontSize: 9, fontWeight: fontWeight.bold, color: colors.text.tertiary, letterSpacing: 1 },
+  summaryValue: { fontSize: 17, fontWeight: fontWeight.bold, color: colors.text.primary },
+  summaryValueGold: { fontSize: 17, fontWeight: fontWeight.bold, color: colors.accent.text },
 
   dateHeader: {
     fontSize: 11,
-    fontWeight: fontWeight.medium,
+    fontWeight: fontWeight.bold,
     color: colors.text.tertiary,
-    letterSpacing: 11 * 0.08,
+    letterSpacing: 1,
     paddingHorizontal: H,
-    marginBottom: spacing['2'],
+    marginBottom: spacing['3'],
     marginTop: spacing['2'],
+    textTransform: 'uppercase',
   },
   txnCard: {
     marginHorizontal: H,
@@ -176,30 +193,30 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
     ...shadows.card,
     overflow: 'hidden',
-    marginBottom: spacing['4'],
+    marginBottom: spacing['6'],
   },
   txnRow: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: spacing['4'],
-    paddingHorizontal: spacing['5'],
-    height: 68,
+    paddingHorizontal: spacing['4'],
+    height: 72,
   },
   txnAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
     backgroundColor: colors.surfaceDark,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing['3'],
   },
-  txnAvatarText: { fontSize: 13, fontWeight: fontWeight.semibold, color: '#FFFFFF' },
+  txnAvatarText: { fontSize: 14, fontWeight: fontWeight.bold, color: '#FFFFFF' },
   txnCenter: { flex: 1 },
-  txnStore: { fontSize: 15, fontWeight: fontWeight.medium, color: colors.text.primary },
+  txnStore: { fontSize: 16, fontWeight: fontWeight.semibold, color: colors.text.primary },
   txnMeta: { fontSize: 12, color: colors.text.tertiary, marginTop: 2 },
   txnRight: { alignItems: 'flex-end', marginLeft: spacing['3'] },
-  txnTotal: { fontSize: 15, fontWeight: fontWeight.semibold, color: colors.text.primary },
-  txnSaved: { fontSize: 12, fontWeight: fontWeight.medium, color: colors.accent.text, marginTop: 2 },
-  txnDivider: { height: 1, backgroundColor: colors.border.subtle, marginLeft: 68 },
+  txnTotal: { fontSize: 16, fontWeight: fontWeight.bold, color: colors.text.primary },
+  txnSaved: { fontSize: 12, fontWeight: fontWeight.semibold, color: colors.accent.text, marginTop: 2 },
+  txnDivider: { height: 1, backgroundColor: colors.border.subtle, marginLeft: 72 },
 });

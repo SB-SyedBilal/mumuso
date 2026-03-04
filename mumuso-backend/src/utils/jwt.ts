@@ -13,14 +13,16 @@ interface TokenPayload {
 }
 
 export function signAccessToken(payload: TokenPayload): string {
-  return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, {
-    expiresIn: env.ACCESS_TOKEN_EXPIRY,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return jwt.sign(payload as object, env.ACCESS_TOKEN_SECRET, {
+    expiresIn: env.ACCESS_TOKEN_EXPIRY as any,
   });
 }
 
 export function signRefreshToken(payload: TokenPayload): string {
-  return jwt.sign(payload, env.REFRESH_TOKEN_SECRET, {
-    expiresIn: env.REFRESH_TOKEN_EXPIRY,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return jwt.sign(payload as object, env.REFRESH_TOKEN_SECRET, {
+    expiresIn: env.REFRESH_TOKEN_EXPIRY as any,
   });
 }
 

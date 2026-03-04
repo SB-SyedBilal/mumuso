@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -18,12 +19,14 @@ const STEPS = [
 ];
 
 export default function QRHelpScreen({ navigation }: Props) {
-  const { membership } = useAuth();
+  const { memberStatus } = useAuth();
 
   return (
     <View style={styles.screen}>
       <View style={styles.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}><Text style={styles.backIcon}>{'\u2039'}</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={24} color={colors.text.primary} />
+        </TouchableOpacity>
         <Text style={styles.navTitle}>QR Help</Text>
         <View style={{ width: 44 }} />
       </View>
@@ -46,11 +49,12 @@ export default function QRHelpScreen({ navigation }: Props) {
 
         <View style={styles.idCard}>
           <Text style={styles.idEyebrow}>YOUR MEMBER ID</Text>
-          <Text style={styles.idValue}>{membership?.member_id || 'MUM-XXXXX'}</Text>
+          <Text style={styles.idValue}>{memberStatus?.member_id || 'MUM-XXXXX'}</Text>
           <Text style={styles.idHint}>Show this to the cashier for manual entry</Text>
         </View>
 
         <TouchableOpacity style={styles.supportLink} onPress={() => Linking.openURL('tel:111-686876')}>
+          <Ionicons name="call-outline" size={16} color={colors.accent.text} style={{ marginRight: 8 }} />
           <Text style={styles.supportText}>Still having issues? Call 111-MUMUSO</Text>
         </TouchableOpacity>
 
@@ -91,6 +95,6 @@ const styles = StyleSheet.create({
   idValue: { fontSize: 28, fontWeight: fontWeight.bold, color: colors.text.inverted, letterSpacing: 3 },
   idHint: { fontSize: 13, color: colors.text.invertedMuted, textAlign: 'center', marginTop: spacing['3'] },
 
-  supportLink: { alignItems: 'center', paddingVertical: spacing['4'] },
-  supportText: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.medium },
+  supportLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: spacing['4'] },
+  supportText: { fontSize: 14, color: colors.accent.text, fontWeight: fontWeight.semibold },
 });

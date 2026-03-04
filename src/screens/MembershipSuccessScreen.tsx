@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { colors } from '../constants/colors';
 import { spacing, radius, fontWeight, shadows } from '../constants/dimensions';
 import { RootStackParamList } from '../types';
@@ -27,7 +28,7 @@ export default function MembershipSuccessScreen({ navigation }: MembershipSucces
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       {/* Success icon */}
       <View style={styles.checkCircle}>
-        <Text style={styles.checkMark}>{'\u2713'}</Text>
+        <Ionicons name="checkmark" size={40} color="#FFFFFF" />
       </View>
 
       <Text style={styles.headline}>Welcome to Mumuso</Text>

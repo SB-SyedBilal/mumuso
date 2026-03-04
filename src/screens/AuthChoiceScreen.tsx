@@ -45,7 +45,7 @@ export default function AuthChoiceScreen({ navigation }: AuthChoiceScreenProps) 
         <Text style={styles.legal}>
           By continuing you agree to our{' '}
           <Text style={styles.legalLink}>Terms</Text>
-          {' \u00B7 '}
+          {' \u2022 '}
           <Text style={styles.legalLink}>Privacy</Text>
         </Text>
       </View>
