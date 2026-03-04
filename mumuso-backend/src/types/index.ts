@@ -18,7 +18,7 @@ export interface FieldError {
   message: string;
 }
 
-export type UserRole = 'customer' | 'cashier' | 'super_admin';
+export type UserRole = 'customer' | 'cashier' | 'admin' | 'super_admin';
 
 export type MembershipStatus = 'active' | 'expired' | 'suspended';
 
@@ -48,9 +48,12 @@ export type AuditAction =
   | 'MEMBERSHIP_ACTIVATED'
   | 'MEMBERSHIP_RENEWED'
   | 'MEMBERSHIP_SUSPENDED'
+  | 'MEMBERSHIP_STATUS_CHANGED'
   | 'TRANSACTION_RECORDED'
   | 'TRANSACTION_OFFLINE_SYNCED'
   | 'STORE_DISCOUNT_UPDATED'
+  | 'STORE_CREATED'
+  | 'STORE_UPDATED'
   | 'CASHIER_ACCOUNT_CREATED'
   | 'PAYMENT_COMPLETED'
   | 'PAYMENT_FAILED';

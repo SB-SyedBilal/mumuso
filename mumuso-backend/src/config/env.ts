@@ -56,6 +56,9 @@ const envSchema = z.object({
   DISCOUNT_MIN_PCT: z.coerce.number().default(5),
   DISCOUNT_MAX_PCT: z.coerce.number().default(20),
 
+  // Rate limit allowlists
+  LOGIN_RATE_LIMIT_ALLOWLIST: z.string().default(''),
+
   // Feature Flags — Ref: Supplement Section 7.2
   IP_ALLOWLIST_ENABLED: z
     .string()

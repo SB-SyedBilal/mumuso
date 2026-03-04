@@ -2,9 +2,10 @@
 // Uses express-rate-limit with Redis store pattern via ioredis
 
 import rateLimit from 'express-rate-limit';
-import { Request } from 'express';
+import { Request, RequestHandler } from 'express';
 import { redis } from '../config/redis';
 import { logger } from './logger';
+import { env } from '../config/env';
 
 // Custom Redis store for rate limiting
 class RedisRateLimitStore {
@@ -89,13 +90,27 @@ export const registerLimiter = createLimiter({
 });
 
 // POST /auth/login — 5 failed attempts per email per 15 min
-export const loginLimiter = createLimiter({
+const loginAllowlist = new Set(
+  env.LOGIN_RATE_LIMIT_ALLOWLIST.split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => email.length > 0),
+);
+
+const baseLoginLimiter = createLimiter({
   windowMs: 15 * 60 * 1000,
   max: 5,
   prefix: 'rl:login',
   keyGenerator: (req: Request) => (req.body as { email?: string })?.email || req.ip || 'unknown',
   message: 'Too many login attempts. Account locked for 30 minutes.',
 });
+
+export const loginLimiter: RequestHandler = (req, res, next) => {
+  const email = (req.body as { email?: string })?.email?.toLowerCase();
+  if (email && loginAllowlist.has(email)) {
+    return next();
+  }
+  return baseLoginLimiter(req, res, next);
+};
 
 // POST /auth/forgot-password — 3 per email per hour
 export const forgotPasswordLimiter = createLimiter({

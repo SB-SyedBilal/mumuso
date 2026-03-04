@@ -22,6 +22,7 @@ import storesRouter from './modules/stores/stores.router';
 import cashierRouter from './modules/cashier/cashier.router';
 import transactionsRouter from './modules/transactions/transactions.router';
 import notificationsRouter from './modules/notifications/notifications.router';
+import adminRouter from './modules/admin/admin.router';
 import swaggerRouter from './routes/swagger';
 
 const app = express();
@@ -131,6 +132,7 @@ app.use(`${API_PREFIX}/stores`, storesRouter);
 app.use(`${API_PREFIX}/cashier`, cashierRouter);
 app.use(`${API_PREFIX}/transactions`, transactionsRouter);
 app.use(`${API_PREFIX}/notifications`, notificationsRouter);
+app.use(`${API_PREFIX}/admin`, adminRouter);
 
 // ─── 404 HANDLER ────────────────────────────────────────────────────────────
 app.use((_req, res) => {

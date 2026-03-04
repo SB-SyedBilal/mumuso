@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-canvas text-text-primary font-sans;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-surface rounded-card shadow-card p-6;
+  }
+  
+  .btn-primary {
+    @apply bg-accent-gold text-white px-6 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply bg-transparent border border-text-secondary text-text-primary px-6 py-3 rounded-lg font-medium hover:bg-surface-dark hover:text-white transition-all;
+  }
+  
+  .input-field {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold focus:border-transparent;
+  }
+  
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .badge-success {
+    @apply badge bg-success bg-opacity-10 text-success;
+  }
+  
+  .badge-error {
+    @apply badge bg-error bg-opacity-10 text-error;
+  }
+  
+  .badge-warning {
+    @apply badge bg-warning bg-opacity-10 text-warning;
+  }
+}
