@@ -1,28 +1,55 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Filter, Download, Eye } from 'lucide-react'
+import { Search, Filter, Download, Eye, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { adminApi } from '@/lib/api/admin'
-import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
+import { formatCurrency, formatDateRange, formatMemberID, getStatusColor } from '@/lib/utils'
+import { MemberDetailDrawer } from '@/components/members/MemberDetailDrawer'
 
 export default function MembersPage() {
   const router = useRouter()
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   const { data, isLoading } = useQuery({
-    queryKey: ['members', page, search, statusFilter],
+    queryKey: ['members', page, search, statusFilter, sortBy, sortOrder],
     queryFn: () =>
       adminApi.getMembers({
         page,
         limit: 20,
         search: search || undefined,
-        status: statusFilter || undefined,
+        status: statusFilter !== 'all' ? statusFilter : undefined,
       }),
   })
+
+  const handleClearFilters = () => {
+    setSearchInput('')
+    setSearch('')
+    setStatusFilter('all')
+    setSortBy('created_at')
+    setSortOrder('desc')
+    setPage(1)
+  }
+
+  const handleOpenMemberDetail = (memberId: string) => {
+    setSelectedMemberId(memberId)
+    setIsDrawerOpen(true)
+  }
 
   return (
     <div className="space-y-6">
@@ -38,28 +65,69 @@ export default function MembersPage() {
       </div>
 
       <div className="card">
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
+        <div className="space-y-4 mb-6">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" size={20} />
             <input
               type="text"
               placeholder="Search by name, email, phone, or member ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="input-field pl-10"
             />
           </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="input-field md:w-48"
-          >
-            <option value="">All Status</option>
-            <option value="active">Active</option>
-            <option value="expired">Expired</option>
-            <option value="suspended">Suspended</option>
-            <option value="expiring_soon">Expiring Soon</option>
-          </select>
+          
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-text-secondary">Status:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="input-field w-40"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="expired">Expired</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-text-secondary">Sort By:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="input-field w-40"
+              >
+                <option value="created_at">Join Date</option>
+                <option value="name">Name</option>
+                <option value="expiry_date">Expiry Date</option>
+                <option value="total_saved">Total Saved</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-text-secondary">Order:</label>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="input-field w-32"
+              >
+                <option value="desc">Descending</option>
+                <option value="asc">Ascending</option>
+              </select>
+            </div>
+
+            {(searchInput || statusFilter !== 'all' || sortBy !== 'created_at' || sortOrder !== 'desc') && (
+              <button
+                onClick={handleClearFilters}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-text-secondary hover:text-text-primary border border-gray-300 rounded-lg transition-colors"
+              >
+                <X size={16} />
+                Clear Filters
+              </button>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
@@ -83,9 +151,13 @@ export default function MembersPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {data?.data.map((member) => (
-                    <tr key={member.id} className="hover:bg-canvas transition-colors">
+                    <tr 
+                      key={member.id} 
+                      className="hover:bg-canvas transition-colors cursor-pointer"
+                      onClick={() => handleOpenMemberDetail(member.id)}
+                    >
                       <td className="px-4 py-4">
-                        <span className="font-mono text-sm text-text-primary">{member.member_id}</span>
+                        <span className="font-mono text-sm text-text-primary">{formatMemberID(member.member_id)}</span>
                       </td>
                       <td className="px-4 py-4">
                         <p className="font-medium text-text-primary">{member.name}</p>
@@ -101,7 +173,7 @@ export default function MembersPage() {
                       </td>
                       <td className="px-4 py-4">
                         <p className="text-sm text-text-secondary">
-                          {formatDate(member.membership_start)} - {formatDate(member.membership_end)}
+                          {formatDateRange(member.membership_start, member.membership_end)}
                         </p>
                         {member.auto_renew && (
                           <span className="text-xs text-success">Auto-renew enabled</span>
@@ -113,7 +185,10 @@ export default function MembersPage() {
                       </td>
                       <td className="px-4 py-4">
                         <button
-                          onClick={() => router.push(`/dashboard/members/${member.id}`)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleOpenMemberDetail(member.id)
+                          }}
                           className="p-2 hover:bg-accent-gold/10 rounded-lg transition-colors"
                           title="View Details"
                         >
@@ -152,6 +227,15 @@ export default function MembersPage() {
           </>
         )}
       </div>
+
+      <MemberDetailDrawer
+        isOpen={isDrawerOpen}
+        memberId={selectedMemberId}
+        onClose={() => {
+          setIsDrawerOpen(false)
+          setSelectedMemberId(null)
+        }}
+      />
     </div>
   )
 }

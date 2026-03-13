@@ -7,6 +7,7 @@ import { AppError } from '../../middleware/errorHandler';
 import { logger } from '../../middleware/logger';
 import { generateMemberId } from '../../utils/memberId';
 import { safepayService } from '../../services/safepay.service';
+import { stripeService } from '../../services/stripe.service';
 import { createAuditLog } from '../../services/audit.service';
 import { CreateOrderInput, WebhookPayload } from './membership.schema';
 
@@ -63,7 +64,7 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     throw new AppError('NOT_FOUND', 'Membership plan not found', 404);
   }
 
-  // Get user details for Safepay
+  // Get user details for payment gateway
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { full_name: true, email: true, phone: true },
@@ -73,6 +74,9 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     throw new AppError('NOT_FOUND', 'User not found', 404);
   }
 
+  // Determine gateway (default to safepay for backward compatibility)
+  const gateway = input.gateway || 'safepay';
+
   // Create payment record
   const payment = await prisma.payment.create({
     data: {
@@ -80,28 +84,54 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
       plan_id: plan.id,
       amount: plan.price,
       currency: plan.currency,
-      gateway: 'safepay',
+      gateway,
       is_renewal: isRenewal,
       idempotency_key: `${userId}_${plan.id}_${Date.now()}`,
     },
   });
 
-  // Create Safepay order
-  const safepayOrder = await safepayService.createOrder({
-    userId,
-    planId: plan.id,
-    amount: new Decimal(plan.price.toString()).toNumber(),
-    currency: plan.currency,
-    orderId: payment.id,
-    customerName: user.full_name,
-    customerEmail: user.email,
-    customerPhone: user.phone || '',
-  });
+  // Create payment order based on gateway
+  let gatewayToken: string;
+  let gatewayExpiry: number;
+  let clientSecret: string | undefined;
+
+  if (gateway === 'stripe') {
+    // Create Stripe checkout session
+    const stripeSession = await stripeService.createCheckoutSession({
+      userId,
+      planId: plan.id,
+      amount: new Decimal(plan.price.toString()).toNumber(),
+      currency: plan.currency,
+      orderId: payment.id,
+      customerName: user.full_name,
+      customerEmail: user.email,
+      customerPhone: user.phone || '',
+    });
+
+    gatewayToken = stripeSession.sessionId;
+    gatewayExpiry = stripeSession.expiry;
+    clientSecret = stripeSession.clientSecret;
+  } else {
+    // Create Safepay order
+    const safepayOrder = await safepayService.createOrder({
+      userId,
+      planId: plan.id,
+      amount: new Decimal(plan.price.toString()).toNumber(),
+      currency: plan.currency,
+      orderId: payment.id,
+      customerName: user.full_name,
+      customerEmail: user.email,
+      customerPhone: user.phone || '',
+    });
+
+    gatewayToken = safepayOrder.token;
+    gatewayExpiry = safepayOrder.expiry;
+  }
 
   // Update payment with gateway order ID
   await prisma.payment.update({
     where: { id: payment.id },
-    data: { gateway_order_id: safepayOrder.token },
+    data: { gateway_order_id: gatewayToken },
   });
 
   logger.info('Payment order created', {
@@ -109,15 +139,18 @@ export async function createOrder(userId: string, input: CreateOrderInput) {
     userId,
     planId: plan.id,
     amount: Number(plan.price),
+    gateway,
     isRenewal,
   });
 
   return {
     payment_id: payment.id,
-    gateway_token: safepayOrder.token,
+    gateway,
+    gateway_token: gatewayToken,
+    client_secret: clientSecret,
     amount: Number(plan.price),
     currency: plan.currency,
-    expiry: safepayOrder.expiry,
+    expiry: gatewayExpiry,
     is_renewal: isRenewal,
   };
 }

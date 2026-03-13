@@ -1,4 +1,4 @@
-import { apiClient } from './client'
+import { mockAdminApi } from './mockClient'
 
 export interface DashboardMetrics {
   period: string
@@ -103,73 +103,4 @@ export interface Store {
   total_revenue?: number
 }
 
-export const adminApi = {
-  getDashboard: async (period: string = 'month'): Promise<DashboardMetrics> => {
-    const response = await apiClient.get(`/admin/dashboard?period=${period}`)
-    return response.data
-  },
-
-  getMembers: async (params?: {
-    page?: number
-    limit?: number
-    status?: string
-    search?: string
-  }): Promise<{ data: Member[]; total: number; page: number; limit: number }> => {
-    const response = await apiClient.get('/admin/members', { params })
-    return response.data
-  },
-
-  getMemberDetails: async (id: string): Promise<Member> => {
-    const response = await apiClient.get(`/admin/members/${id}`)
-    return response.data
-  },
-
-  updateMemberStatus: async (
-    id: string,
-    data: { status: string; reason?: string }
-  ): Promise<void> => {
-    await apiClient.put(`/admin/members/${id}/status`, data)
-  },
-
-  getTransactions: async (params?: {
-    page?: number
-    limit?: number
-    member_id?: string
-    store_id?: string
-    start_date?: string
-    end_date?: string
-  }): Promise<{ data: Transaction[]; total: number; page: number; limit: number }> => {
-    const response = await apiClient.get('/admin/transactions', { params })
-    return response.data
-  },
-
-  getStores: async (): Promise<Store[]> => {
-    const response = await apiClient.get('/admin/stores')
-    return response.data
-  },
-
-  createStore: async (data: {
-    store_id: string
-    name: string
-    city: string
-    address: string
-    phone: string
-  }): Promise<Store> => {
-    const response = await apiClient.post('/admin/stores', data)
-    return response.data
-  },
-
-  updateStore: async (
-    id: string,
-    data: {
-      name?: string
-      city?: string
-      address?: string
-      phone?: string
-      is_active?: boolean
-    }
-  ): Promise<Store> => {
-    const response = await apiClient.put(`/admin/stores/${id}`, data)
-    return response.data
-  },
-}
+export const adminApi = mockAdminApi

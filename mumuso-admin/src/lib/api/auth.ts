@@ -1,6 +1,4 @@
-import axios from 'axios'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1'
+import { mockAuthApi } from './mockClient'
 
 export interface LoginCredentials {
   email: string
@@ -22,32 +20,14 @@ export interface LoginResponse {
 
 export const authApi = {
   login: async (credentials: LoginCredentials): Promise<LoginResponse> => {
-    const response = await axios.post(`${API_URL}/auth/login`, credentials)
-    const payload = response.data
-
-    if (!payload?.success || !payload?.data) {
-      throw new Error('Unexpected login response from server')
-    }
-
-    const { access_token, refresh_token, user } = payload.data
-
+    const result = await mockAuthApi.login(credentials.email, credentials.password)
     return {
       success: true,
-      access_token,
-      refresh_token,
-      admin: {
-        admin_id: user.id,
-        name: user.full_name,
-        email: user.email,
-        role: user.role,
-        permissions: user.permissions || [],
-      },
+      ...result,
     }
   },
 
   logout: async (refreshToken: string): Promise<void> => {
-    await axios.post(`${API_URL}/auth/logout`, {
-      refresh_token: refreshToken,
-    })
+    await mockAuthApi.logout(refreshToken)
   },
 }

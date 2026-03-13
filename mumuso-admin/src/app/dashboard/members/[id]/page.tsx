@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Mail, Phone, Calendar, CreditCard, TrendingUp } from 'lucide-react'
 import { adminApi } from '@/lib/api/admin'
-import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils'
+import { formatCurrency, formatDateRange, formatMemberID, getStatusColor } from '@/lib/utils'
 import { toast } from 'sonner'
 
 export default function MemberDetailsPage({ params }: { params: { id: string } }) {
@@ -57,7 +57,7 @@ export default function MemberDetailsPage({ params }: { params: { id: string } }
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-display text-text-primary mb-2">{member.name}</h1>
-          <p className="text-text-secondary font-mono">{member.member_id}</p>
+          <p className="text-text-secondary font-mono">{formatMemberID(member.member_id)}</p>
         </div>
         <span className={getStatusColor(member.status)}>
           {member.status.replace('_', ' ').toUpperCase()}
@@ -104,7 +104,7 @@ export default function MemberDetailsPage({ params }: { params: { id: string } }
           <div>
             <p className="text-sm text-text-secondary mb-1">Membership Period</p>
             <p className="text-text-primary font-medium">
-              {formatDate(member.membership_start)} - {formatDate(member.membership_end)}
+              {formatDateRange(member.membership_start, member.membership_end)}
             </p>
           </div>
           <div>

@@ -10,6 +10,8 @@ import {
   LogOut,
   Menu,
   X,
+  BarChart3,
+  FileText,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { authApi } from '@/lib/api/auth'
@@ -21,9 +23,11 @@ interface DashboardLayoutProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Members', href: '/dashboard/members', icon: Users },
   { name: 'Transactions', href: '/dashboard/transactions', icon: Receipt },
   { name: 'Stores', href: '/dashboard/stores', icon: Store },
+  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
 ]
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {

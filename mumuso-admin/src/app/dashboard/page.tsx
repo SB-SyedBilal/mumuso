@@ -2,13 +2,15 @@
 
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Users, TrendingUp, DollarSign, Tag } from 'lucide-react'
+import { Users, TrendingUp, DollarSign, Tag, Store, AlertCircle, CheckCircle } from 'lucide-react'
 import { adminApi } from '@/lib/api/admin'
+import { mockAdminApi } from '@/lib/api/mockClient'
 import { MetricCard } from '@/components/dashboard/MetricCard'
 import { RevenueChart } from '@/components/dashboard/RevenueChart'
 import { MemberGrowthChart } from '@/components/dashboard/MemberGrowthChart'
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions'
 import { TopStores } from '@/components/dashboard/TopStores'
+import Link from 'next/link'
 
 const periods = [
   { label: 'Today', value: 'today' },
@@ -117,6 +119,87 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentTransactions transactions={data?.recent_transactions || []} />
         <TopStores stores={data?.metrics.top_stores || []} />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="card">
+          <h3 className="text-lg font-display text-text-primary mb-4">Quick Stats</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Renewal Rate</span>
+              <span className="text-lg font-semibold text-success">
+                {((metrics?.renewal_rate || 0) * 100).toFixed(0)}%
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Auto-Renew Enabled</span>
+              <span className="text-lg font-semibold text-text-primary">
+                {metrics?.auto_renew_enabled || 0}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Avg Transaction</span>
+              <span className="text-lg font-semibold text-text-primary">
+                PKR {Math.round(metrics?.average_transaction_value || 0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Active Stores</span>
+              <span className="text-lg font-semibold text-text-primary">
+                {metrics?.active_stores || 0}/{metrics?.total_stores || 0}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="text-lg font-display text-text-primary mb-4">System Health</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">POS Integration</span>
+              <span className="flex items-center gap-1 text-success">
+                <CheckCircle size={16} />
+                <span className="text-sm font-medium">Operational</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Payment Gateway</span>
+              <span className="flex items-center gap-1 text-success">
+                <CheckCircle size={16} />
+                <span className="text-sm font-medium">Operational</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Database</span>
+              <span className="flex items-center gap-1 text-success">
+                <CheckCircle size={16} />
+                <span className="text-sm font-medium">Operational</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-text-secondary">Last Transaction</span>
+              <span className="text-sm font-medium text-text-primary">Just now</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <h3 className="text-lg font-display text-text-primary mb-4">Quick Actions</h3>
+          <div className="space-y-2">
+            <Link href="/dashboard/analytics" className="block w-full text-left px-4 py-3 bg-canvas hover:bg-accent-gold/10 rounded-lg transition-colors">
+              <span className="text-sm font-medium text-text-primary">View Advanced Analytics</span>
+            </Link>
+            <Link href="/dashboard/members" className="block w-full text-left px-4 py-3 bg-canvas hover:bg-accent-gold/10 rounded-lg transition-colors">
+              <span className="text-sm font-medium text-text-primary">Manage Members</span>
+            </Link>
+            <Link href="/dashboard/transactions" className="block w-full text-left px-4 py-3 bg-canvas hover:bg-accent-gold/10 rounded-lg transition-colors">
+              <span className="text-sm font-medium text-text-primary">View All Transactions</span>
+            </Link>
+            <Link href="/dashboard/stores" className="block w-full text-left px-4 py-3 bg-canvas hover:bg-accent-gold/10 rounded-lg transition-colors">
+              <span className="text-sm font-medium text-text-primary">Manage Stores</span>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   )

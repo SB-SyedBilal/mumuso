@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { format } from 'date-fns'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -11,7 +12,7 @@ export function formatCurrency(amount: number): string {
     currency: 'PKR',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount)
+  }).format(amount).replace('PKR', 'Rs.')
 }
 
 export function formatNumber(num: number): string {
@@ -19,21 +20,22 @@ export function formatNumber(num: number): string {
 }
 
 export function formatDate(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-PK', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(date))
+  return format(new Date(date), 'dd/MM/yyyy')
+}
+
+export function formatDateRange(start: string | Date, end: string | Date): string {
+  return `${format(new Date(start), 'dd/MM/yyyy')} - ${format(new Date(end), 'dd/MM/yyyy')}`
 }
 
 export function formatDateTime(date: string | Date): string {
-  return new Intl.DateTimeFormat('en-PK', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(date))
+  return format(new Date(date), 'dd/MM/yyyy HH:mm')
+}
+
+export function formatMemberID(id: string): string {
+  if (id.startsWith('MUM') && id.length > 3 && !id.includes('-')) {
+    return `MUM-${id.slice(3)}`
+  }
+  return id
 }
 
 export function getStatusColor(status: string): string {

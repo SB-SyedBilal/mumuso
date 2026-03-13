@@ -31,4 +31,8 @@ router.get('/renewal-info', authenticate, requireRole('customer'), membershipCon
 // No auth middleware — Safepay calls this directly
 router.post('/webhook/safepay', membershipController.webhookSafepay);
 
+// POST /membership/webhook/stripe — Public (verified by signature)
+// No auth middleware — Stripe calls this directly
+router.post('/webhook/stripe', membershipController.webhookStripe);
+
 export default router;

@@ -24,6 +24,7 @@ export async function getDashboardStats(query: DashboardStatsQueryInput) {
 
   // Calculate date range based on period
   const now = moment.tz('Asia/Karachi');
+  const endDate = now.toDate();
   let startDate: Date;
 
   switch (period) {
@@ -50,147 +51,259 @@ export async function getDashboardStats(query: DashboardStatsQueryInput) {
     activeMembers,
     expiredMembers,
     suspendedMembers,
-    totalTransactions,
-    periodTransactions,
-    totalRevenue,
-    periodRevenue,
+    expiringIn30Days,
+    expiringIn7Days,
+    newMembersThisPeriod,
+    totalTransactionsAggregate,
+    periodTransactionsAggregate,
     totalStores,
     activeStores,
+    storesWithRecentActivityRaw,
     recentTransactions,
-    topStores,
-    membershipTrend,
+    topStoreStats,
+    membershipActivations,
+    periodTransactionsRaw,
+    latestTransaction,
   ] = await Promise.all([
-    // Member statistics
     prisma.membership.count(),
     prisma.membership.count({ where: { status: 'active' } }),
     prisma.membership.count({ where: { status: 'expired' } }),
     prisma.membership.count({ where: { status: 'suspended' } }),
-
-    // Transaction statistics (all time)
-    prisma.transaction.count(),
-    prisma.transaction.count({ where: { created_at: { gte: startDate } } }),
-
-    // Revenue statistics (all time) — Ref: Law 2.3 (Decimal.js for precision)
-    prisma.transaction.findMany({ select: { discount_amount: true } }),
-    prisma.transaction.findMany({
-      where: { created_at: { gte: startDate } },
-      select: { discount_amount: true },
+    prisma.membership.count({
+      where: {
+        status: 'active',
+        expiry_date: {
+          gte: now.toDate(),
+          lte: now.clone().add(30, 'days').toDate(),
+        },
+      },
     }),
-
-    // Store statistics
+    prisma.membership.count({
+      where: {
+        status: 'active',
+        expiry_date: {
+          gte: now.toDate(),
+          lte: now.clone().add(7, 'days').toDate(),
+        },
+      },
+    }),
+    prisma.membership.count({
+      where: {
+        activated_at: {
+          gte: startDate,
+        },
+      },
+    }),
+    prisma.transaction.aggregate({
+      _count: { _all: true },
+      _sum: {
+        discount_amount: true,
+        final_amount: true,
+        original_amount: true,
+      },
+    }),
+    prisma.transaction.aggregate({
+      where: { created_at: { gte: startDate } },
+      _count: { _all: true },
+      _sum: {
+        discount_amount: true,
+        final_amount: true,
+        original_amount: true,
+      },
+    }),
     prisma.store.count(),
     prisma.store.count({ where: { is_active: true } }),
-
-    // Recent activity
+    prisma.transaction.groupBy({
+      by: ['store_id'],
+      where: { created_at: { gte: startDate } },
+      _count: { id: true },
+    }),
     prisma.transaction.findMany({
       where: { created_at: { gte: startDate } },
       orderBy: { created_at: 'desc' },
       take: 10,
       include: {
-        user: { select: { full_name: true } },
-        store: { select: { name: true } },
+        member: { select: { full_name: true, id: true } },
+        store: { select: { id: true, name: true } },
       },
     }),
-
-    // Top performing stores by transaction count
     prisma.transaction.groupBy({
       by: ['store_id'],
       where: { created_at: { gte: startDate } },
       _count: { id: true },
-      _sum: { discount_amount: true },
+      _sum: { discount_amount: true, final_amount: true },
       orderBy: { _count: { id: 'desc' } },
       take: 5,
     }),
-
-    // Membership trend (last 12 months)
-    prisma.membership.groupBy({
-      by: ['activated_at'],
+    prisma.membership.findMany({
       where: {
         activated_at: {
-          gte: moment.tz('Asia/Karachi').subtract(12, 'months').toDate(),
+          gte: moment
+            .tz('Asia/Karachi')
+            .subtract(12, 'months')
+            .startOf('month')
+            .toDate(),
         },
       },
-      _count: { id: true },
+      select: { activated_at: true },
+    }),
+    prisma.transaction.findMany({
+      where: { created_at: { gte: startDate } },
+      select: {
+        store_id: true,
+        created_at: true,
+        discount_amount: true,
+        final_amount: true,
+      },
+    }),
+    prisma.transaction.findFirst({
+      orderBy: { created_at: 'desc' },
+      select: { created_at: true },
     }),
   ]);
 
-  // Calculate total revenue saved — Ref: Authorization Decision B
-  const totalRevenueSaved = totalRevenue.reduce(
-    (sum, t) => sum.plus(new Decimal(t.discount_amount.toString())),
-    new Decimal(0),
-  );
+  const totalTransactions = totalTransactionsAggregate._count._all;
+  const totalDiscount = Number(totalTransactionsAggregate._sum.discount_amount ?? 0);
+  const totalRevenueActual = Number(totalTransactionsAggregate._sum.final_amount ?? 0);
+  const totalRevenueWithoutDiscount = Number(totalTransactionsAggregate._sum.original_amount ?? 0);
 
-  const periodRevenueSaved = periodRevenue.reduce(
-    (sum, t) => sum.plus(new Decimal(t.discount_amount.toString())),
-    new Decimal(0),
-  );
+  const periodTransactions = periodTransactionsAggregate._count._all;
+  const periodDiscount = Number(periodTransactionsAggregate._sum.discount_amount ?? 0);
+  const periodRevenueActual = Number(periodTransactionsAggregate._sum.final_amount ?? 0);
 
-  // Fetch store details for top stores
-  const topStoreIds = topStores.map((s) => s.store_id);
-  const storeDetails = await prisma.store.findMany({
-    where: { id: { in: topStoreIds } },
-    select: { id: true, name: true, city: true },
+  const storesWithRecentActivity = storesWithRecentActivityRaw.length;
+
+  // Build daily transactions chart data
+  const dailyTransactionsMap = new Map<string, { count: number; revenue: number; discount: number }>();
+  const lastTransactionByStore = new Map<string, Date>();
+
+  periodTransactionsRaw.forEach((tx) => {
+    const dayKey = moment(tx.created_at).format('YYYY-MM-DD');
+    const existing = dailyTransactionsMap.get(dayKey) || { count: 0, revenue: 0, discount: 0 };
+    existing.count += 1;
+    existing.revenue += Number(tx.final_amount);
+    existing.discount += Number(tx.discount_amount);
+    dailyTransactionsMap.set(dayKey, existing);
+
+    const existingLast = lastTransactionByStore.get(tx.store_id);
+    if (!existingLast || existingLast < tx.created_at) {
+      lastTransactionByStore.set(tx.store_id, tx.created_at);
+    }
   });
 
-  const topStoresWithDetails = topStores.map((stat) => {
+  const dailyTransactions = Array.from(dailyTransactionsMap.entries())
+    .sort((a, b) => (a[0] > b[0] ? 1 : -1))
+    .map(([date, stats]) => ({
+      date,
+      count: stats.count,
+      revenue: stats.revenue,
+      discount: stats.discount,
+    }));
+
+  // Build member growth chart for last 12 months
+  const memberGrowthMap = new Map<string, number>();
+  membershipActivations.forEach((m) => {
+    if (m.activated_at) {
+      const monthKey = moment(m.activated_at).format('YYYY-MM');
+      memberGrowthMap.set(monthKey, (memberGrowthMap.get(monthKey) ?? 0) + 1);
+    }
+  });
+
+  const memberGrowth: Array<{ month: string; new: number; churned: number; net: number }> = [];
+  for (let i = 11; i >= 0; i -= 1) {
+    const monthKey = moment(endDate).clone().startOf('month').subtract(i, 'months').format('YYYY-MM');
+    const newCount = memberGrowthMap.get(monthKey) ?? 0;
+    memberGrowth.push({ month: monthKey, new: newCount, churned: 0, net: newCount });
+  }
+
+  // Fetch store metadata for top stores
+  const topStoreIds = topStoreStats.map((s) => s.store_id);
+  const storeDetails = topStoreIds.length
+    ? await prisma.store.findMany({
+        where: { id: { in: topStoreIds } },
+        select: { id: true, name: true, city: true },
+      })
+    : [];
+
+  const topStoresWithDetails = topStoreStats.map((stat) => {
     const store = storeDetails.find((s) => s.id === stat.store_id);
+    const revenue = Number(stat._sum.final_amount ?? 0);
+    const lastTx = lastTransactionByStore.get(stat.store_id);
     return {
       store_id: stat.store_id,
       store_name: store?.name ?? 'Unknown',
       city: store?.city ?? 'Unknown',
       transaction_count: stat._count.id,
-      total_discount: stat._sum.discount_amount ? Number(stat._sum.discount_amount) : 0,
+      total_discount_given: Number(stat._sum.discount_amount ?? 0),
+      revenue,
+      last_transaction: lastTx?.toISOString() ?? null,
     };
   });
 
-  // Calculate growth rates
-  const previousPeriodStart = moment.tz('Asia/Karachi')
-    .subtract(period === 'today' ? 1 : period === 'week' ? 14 : period === 'month' ? 2 : 2, period === 'today' ? 'days' : period === 'week' ? 'days' : 'months')
-    .toDate();
-
-  const previousPeriodTransactions = await prisma.transaction.count({
-    where: {
-      created_at: {
-        gte: previousPeriodStart,
-        lt: startDate,
-      },
-    },
-  });
-
-  const transactionGrowth = previousPeriodTransactions > 0
-    ? ((periodTransactions - previousPeriodTransactions) / previousPeriodTransactions) * 100
+  const averageTransactionValue = totalTransactions > 0
+    ? totalRevenueActual / totalTransactions
     : 0;
+
+  const averageSavingsPerMember = totalMembers > 0
+    ? totalDiscount / totalMembers
+    : 0;
+
+  const metrics = {
+    total_members: totalMembers,
+    active_members: activeMembers,
+    expired_members: expiredMembers,
+    suspended_members: suspendedMembers,
+    expiring_in_30_days: expiringIn30Days,
+    expiring_in_7_days: expiringIn7Days,
+    new_members_this_period: newMembersThisPeriod,
+    renewal_rate: 0, // Placeholder until renewal analytics are implemented
+    auto_renew_enabled: 0,
+    total_transactions: totalTransactions,
+    total_transactions_this_period: periodTransactions,
+    total_revenue_without_discount: totalRevenueWithoutDiscount,
+    total_discount_given: totalDiscount,
+    total_revenue_actual: totalRevenueActual,
+    average_transaction_value: averageTransactionValue,
+    average_savings_per_member: averageSavingsPerMember,
+    total_stores: totalStores,
+    active_stores: activeStores,
+    stores_with_recent_activity: storesWithRecentActivity,
+    top_stores: topStoresWithDetails,
+  };
+
+  const charts = {
+    daily_transactions: dailyTransactions,
+    member_growth: memberGrowth,
+  };
+
+  const recentTransactionsFormatted = recentTransactions.map((t) => ({
+    transaction_id: t.id,
+    member_id: t.member_id,
+    member_name: t.member?.full_name ?? 'Unknown Member',
+    store_name: t.store.name,
+    store_id: t.store.id,
+    discount_amount: Number(t.discount_amount),
+    final_amount: Number(t.final_amount),
+    timestamp: t.created_at.toISOString(),
+  }));
+
+  const systemHealth = {
+    pos_integration: 'operational',
+    payment_gateway: 'operational',
+    database: 'operational',
+    last_transaction: latestTransaction?.created_at?.toISOString() ?? null,
+  };
 
   logger.info('Dashboard stats retrieved', { period, adminRequest: true });
 
   return {
     period,
-    overview: {
-      total_members: totalMembers,
-      active_members: activeMembers,
-      expired_members: expiredMembers,
-      suspended_members: suspendedMembers,
-      total_transactions: totalTransactions,
-      period_transactions: periodTransactions,
-      total_revenue_saved: totalRevenueSaved.toNumber(),
-      period_revenue_saved: periodRevenueSaved.toNumber(),
-      total_stores: totalStores,
-      active_stores: activeStores,
-      transaction_growth_pct: Number(transactionGrowth.toFixed(2)),
-    },
-    recent_transactions: recentTransactions.map((t) => ({
-      id: t.id,
-      member_name: t.user.full_name,
-      store_name: t.store.name,
-      discount_amount: Number(t.discount_amount),
-      final_amount: Number(t.final_amount),
-      created_at: t.created_at,
-    })),
-    top_stores: topStoresWithDetails,
-    membership_trend: membershipTrend.map((m) => ({
-      month: moment(m.activated_at).format('YYYY-MM'),
-      count: m._count.id,
-    })),
+    start_date: startDate.toISOString(),
+    end_date: endDate.toISOString(),
+    metrics,
+    charts,
+    recent_transactions: recentTransactionsFormatted,
+    system_health: systemHealth,
   };
 }
 
@@ -448,7 +561,7 @@ export async function listTransactions(query: ListTransactionsQueryInput) {
       skip,
       take: limit,
       include: {
-        user: { select: { full_name: true } },
+        member: { select: { full_name: true } },
         store: { select: { name: true, city: true } },
       },
     }),
@@ -481,7 +594,7 @@ export async function listTransactions(query: ListTransactionsQueryInput) {
     transactions: transactions.map((t) => ({
       id: t.id,
       member_id: t.member_id,
-      member_name: t.user.full_name,
+      member_name: t.member?.full_name ?? 'Unknown Member',
       store_name: t.store.name,
       store_city: t.store.city,
       date: t.created_at,
@@ -679,7 +792,7 @@ export async function exportReport(query: ExportReportQueryInput) {
       const transactions = await prisma.transaction.findMany({
         where,
         include: {
-          user: { select: { full_name: true } },
+          member: { select: { full_name: true } },
           store: { select: { name: true, city: true } },
         },
         orderBy: { created_at: 'desc' },
@@ -688,7 +801,7 @@ export async function exportReport(query: ExportReportQueryInput) {
       data = transactions.map((t) => ({
         transaction_id: t.id,
         member_id: t.member_id,
-        member_name: t.user.full_name,
+        member_name: t.member?.full_name ?? 'Unknown Member',
         store_name: t.store.name,
         store_city: t.store.city,
         date: moment(t.created_at).format('YYYY-MM-DD HH:mm:ss'),

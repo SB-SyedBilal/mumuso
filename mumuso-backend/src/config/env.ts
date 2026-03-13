@@ -35,6 +35,14 @@ const envSchema = z.object({
     .enum(['SUCCESS', 'FAILED', 'TIMEOUT', 'DUPLICATE_WEBHOOK', ''])
     .default(''),
 
+  // Stripe — Test mode for demos
+  STRIPE_SECRET_KEY: z.string().default(''),
+  STRIPE_PUBLISHABLE_KEY: z.string().default(''),
+  STRIPE_WEBHOOK_SECRET: z.string().default(''),
+  STRIPE_MOCK_SCENARIO: z
+    .enum(['SUCCESS', 'FAILED', 'TIMEOUT', 'DUPLICATE_WEBHOOK', ''])
+    .default(''),
+
   // Firebase
   FIREBASE_PROJECT_ID: z.string().default(''),
   FIREBASE_PRIVATE_KEY: z.string().default(''),
@@ -64,6 +72,9 @@ const envSchema = z.object({
     .string()
     .transform((val) => val === 'true')
     .default('false'),
+
+  // POS Demo API Key
+  POS_DEMO_API_KEY: z.string().default('demo-pos-api-key-12345'),
 
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),

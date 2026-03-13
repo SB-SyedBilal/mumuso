@@ -5,6 +5,7 @@ import { z } from 'zod';
 // POST /membership/create-order — Ref: Primary Spec Section 9
 export const createOrderSchema = z.object({
   plan_id: z.string().uuid(),
+  gateway: z.enum(['safepay', 'stripe']).default('safepay'),
 });
 
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
